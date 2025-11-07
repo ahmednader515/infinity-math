@@ -123,7 +123,7 @@ export default function HomePage() {
                 alt="مصطفي صلاح"
                 fill
                 priority
-                className="object-cover rounded-full border-4 border-[#0083d3]/20 shadow-lg"
+                className="object-cover object-[center_25%] rounded-full border-4 border-[#0083d3]/20 shadow-lg"
                 sizes="(max-width: 768px) 256px, 320px"
               />
             </div>
