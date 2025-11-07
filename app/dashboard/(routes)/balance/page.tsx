@@ -185,10 +185,20 @@ export default function BalancePage() {
                 <MapPin className="h-5 w-5 text-[#0083d3]" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1">أماكن تواجدنا</h3>
-                <p className="text-sm text-muted-foreground">
-                  يمكنك إضافة الرصيد عن طريق زيارة أماكن تواجدنا
+                <h3 className="font-semibold text-lg mb-2">أماكن تواجدنا</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  يمكنك إضافة الرصيد عن طريق زيارة أحد الفروع التالية:
                 </p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#0083d3] mt-1.5"></div>
+                    <p className="text-sm font-medium">الفيوم المسلة العبودي</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#0083d3] mt-1.5"></div>
+                    <p className="text-sm font-medium">الفيوم فيديمين موقف علي عامر</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
