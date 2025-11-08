@@ -10,6 +10,13 @@ import { toast } from "sonner";
 import { Eye, EyeOff, UserPlus, ArrowLeft, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import axios, { AxiosError } from "axios";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CreatedUser {
   id: string;
@@ -28,12 +35,23 @@ export default function CreateAccountPage() {
     fullName: "",
     phoneNumber: "",
     parentPhoneNumber: "",
+    grade: "",
+    division: "",
+    studyType: "",
+    governorate: "",
     password: "",
     confirmPassword: "",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (name: "grade" | "division" | "studyType" | "governorate", value: string) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -59,6 +77,12 @@ export default function CreateAccountPage() {
       return;
     }
 
+    if (!formData.grade || !formData.division || !formData.studyType || !formData.governorate) {
+      toast.error("برجاء استكمال بيانات التسجيل");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.post("/api/teacher/create-account", formData);
       
@@ -70,6 +94,10 @@ export default function CreateAccountPage() {
           fullName: "",
           phoneNumber: "",
           parentPhoneNumber: "",
+          grade: "",
+          division: "",
+          studyType: "",
+          governorate: "",
           password: "",
           confirmPassword: "",
         });
@@ -102,6 +130,10 @@ export default function CreateAccountPage() {
       fullName: "",
       phoneNumber: "",
       parentPhoneNumber: "",
+      grade: "",
+      division: "",
+      studyType: "",
+      governorate: "",
       password: "",
       confirmPassword: "",
     });
@@ -205,6 +237,106 @@ export default function CreateAccountPage() {
                     placeholder="أدخل رقم هاتف الوالد"
                     required
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="grade">الصف الدراسي *</Label>
+                    <Select
+                      value={formData.grade}
+                      onValueChange={(value) => handleSelectChange("grade", value)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="اختر الصف" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="الأول الثانوي">الأول الثانوي</SelectItem>
+                        <SelectItem value="الثاني الثانوي">الثاني الثانوي</SelectItem>
+                        <SelectItem value="الثالث الثانوي">الثالث الثانوي</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="division">القسم *</Label>
+                    <Select
+                      value={formData.division}
+                      onValueChange={(value) => handleSelectChange("division", value)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="اختر القسم" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="عام">عام</SelectItem>
+                        <SelectItem value="أدبي">أدبي</SelectItem>
+                        <SelectItem value="علمي">علمي</SelectItem>
+                        <SelectItem value="علمي رياضة">علمي رياضة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="studyType">نوع الدراسة *</Label>
+                    <Select
+                      value={formData.studyType}
+                      onValueChange={(value) => handleSelectChange("studyType", value)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="اختر نوع الدراسة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="سنتر">سنتر</SelectItem>
+                        <SelectItem value="أون لاين">أون لاين</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="governorate">المحافظة *</Label>
+                    <Select
+                      value={formData.governorate}
+                      onValueChange={(value) => handleSelectChange("governorate", value)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="اختر المحافظة" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px] overflow-y-auto">
+                        <SelectItem value="القاهرة">القاهرة</SelectItem>
+                        <SelectItem value="الجيزة">الجيزة</SelectItem>
+                        <SelectItem value="الإسكندرية">الإسكندرية</SelectItem>
+                        <SelectItem value="الدقهلية">الدقهلية</SelectItem>
+                        <SelectItem value="الشرقية">الشرقية</SelectItem>
+                        <SelectItem value="المنوفية">المنوفية</SelectItem>
+                        <SelectItem value="القليوبية">القليوبية</SelectItem>
+                        <SelectItem value="البحيرة">البحيرة</SelectItem>
+                        <SelectItem value="الغربية">الغربية</SelectItem>
+                        <SelectItem value="بورسعيد">بورسعيد</SelectItem>
+                        <SelectItem value="دمياط">دمياط</SelectItem>
+                        <SelectItem value="الإسماعيلية">الإسماعيلية</SelectItem>
+                        <SelectItem value="السويس">السويس</SelectItem>
+                        <SelectItem value="كفر الشيخ">كفر الشيخ</SelectItem>
+                        <SelectItem value="الفيوم">الفيوم</SelectItem>
+                        <SelectItem value="بني سويف">بني سويف</SelectItem>
+                        <SelectItem value="المنيا">المنيا</SelectItem>
+                        <SelectItem value="أسيوط">أسيوط</SelectItem>
+                        <SelectItem value="سوهاج">سوهاج</SelectItem>
+                        <SelectItem value="قنا">قنا</SelectItem>
+                        <SelectItem value="أسوان">أسوان</SelectItem>
+                        <SelectItem value="الأقصر">الأقصر</SelectItem>
+                        <SelectItem value="البحر الأحمر">البحر الأحمر</SelectItem>
+                        <SelectItem value="الوادي الجديد">الوادي الجديد</SelectItem>
+                        <SelectItem value="مطروح">مطروح</SelectItem>
+                        <SelectItem value="شمال سيناء">شمال سيناء</SelectItem>
+                        <SelectItem value="جنوب سيناء">جنوب سيناء</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

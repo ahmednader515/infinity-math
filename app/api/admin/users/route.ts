@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
                 parentPhoneNumber: true,
                 role: true,
                 balance: true,
+                grade: true,
+                division: true,
+                studyType: true,
+                governorate: true,
                 createdAt: true,
                 updatedAt: true,
                 _count: {

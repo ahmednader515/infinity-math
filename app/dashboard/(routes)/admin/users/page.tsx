@@ -46,6 +46,10 @@ interface User {
     parentPhoneNumber: string;
     role: string;
     balance: number;
+    grade?: string | null;
+    division?: string | null;
+    studyType?: string | null;
+    governorate?: string | null;
     createdAt: string;
     updatedAt: string;
     _count: {
@@ -163,6 +167,27 @@ const UsersPage = () => {
     const staffUsers = filteredUsers.filter(user => user.role === "ADMIN" || user.role === "TEACHER");
     const studentUsers = filteredUsers.filter(user => user.role === "USER");
 
+    const renderSignupDetails = (user: User) => (
+        <div className="space-y-1 text-sm text-muted-foreground text-right">
+            <div>
+                <span className="text-foreground font-medium">الصف: </span>
+                {user.grade || "غير محدد"}
+            </div>
+            <div>
+                <span className="text-foreground font-medium">القسم: </span>
+                {user.division || "غير محدد"}
+            </div>
+            <div>
+                <span className="text-foreground font-medium">نوع الدراسة: </span>
+                {user.studyType || "غير محدد"}
+            </div>
+            <div>
+                <span className="text-foreground font-medium">المحافظة: </span>
+                {user.governorate || "غير محدد"}
+            </div>
+        </div>
+    );
+
     if (loading) {
         return (
             <div className="p-6">
@@ -202,6 +227,7 @@ const UsersPage = () => {
                                     <TableHead className="text-right">رقم الهاتف</TableHead>
                                     <TableHead className="text-right">رقم هاتف الوالد</TableHead>
                                     <TableHead className="text-right">الدور</TableHead>
+                                    <TableHead className="text-right">بيانات التسجيل</TableHead>
                                     <TableHead className="text-right">تاريخ التسجيل</TableHead>
                                     <TableHead className="text-right">الإجراءات</TableHead>
                                 </TableRow>
@@ -227,6 +253,7 @@ const UsersPage = () => {
                                                  user.role === "ADMIN" ? "مشرف" : user.role}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>{renderSignupDetails(user)}</TableCell>
                                         <TableCell>
                                             {format(new Date(user.createdAt), "dd/MM/yyyy", { locale: ar })}
                                         </TableCell>
@@ -375,6 +402,7 @@ const UsersPage = () => {
                                     <TableHead className="text-right">رقم الهاتف</TableHead>
                                     <TableHead className="text-right">رقم هاتف الوالد</TableHead>
                                     <TableHead className="text-right">الدور</TableHead>
+                                    <TableHead className="text-right">بيانات التسجيل</TableHead>
                                     <TableHead className="text-right">الرصيد</TableHead>
                                     <TableHead className="text-right">الكورسات المشتراة</TableHead>
                                     <TableHead className="text-right">تاريخ التسجيل</TableHead>
@@ -394,6 +422,7 @@ const UsersPage = () => {
                                                 طالب
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>{renderSignupDetails(user)}</TableCell>
                                         <TableCell>
                                             <Badge variant="secondary">
                                                 {user.balance} جنيه
