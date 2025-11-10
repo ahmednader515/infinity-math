@@ -8,7 +8,6 @@ import Image from "next/image";
 import { Navbar } from "@/components/navbar";
 import { ScrollProgress } from "@/components/scroll-progress";
 import { useEffect, useState } from "react";
-import { db } from "@/lib/db"; // Import db client
 
 // Define types based on Prisma schema
 type Course = {
@@ -23,19 +22,10 @@ type Course = {
   updatedAt: Date;
 };
 
-type Purchase = {
-  id: string;
-  userId: string;
-  courseId: string;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
 type CourseWithProgress = Course & {
   chapters: { id: string }[];
   quizzes: { id: string }[];
-  purchases: Purchase[];
+  enrollmentCount: number;
   progress: number;
 };
 
@@ -57,7 +47,6 @@ export default function HomePage() {
         }
         
         const data = await response.json();
-        console.log("Fetched courses:", data); // Debug log
         setCourses(data);
 
       } catch (error) {
@@ -370,14 +359,20 @@ export default function HomePage() {
                       <h3 className="text-lg font-semibold mb-2 line-clamp-2">
                         {course.title}
                       </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                        <BookOpen className="h-4 w-4" />
-                        <span>
-                          {course.chapters?.length || 0} {course.chapters?.length === 1 ? "فصل" : "فصول"}
-                          {course.quizzes && course.quizzes.length > 0 && (
-                            <span className="mr-2">، {course.quizzes.length} {course.quizzes.length === 1 ? "اختبار" : "اختبارات"}</span>
-                          )}
-                        </span>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground mb-4">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          <span>
+                            {course.chapters?.length || 0} {course.chapters?.length === 1 ? "فصل" : "فصول"}
+                            {course.quizzes && course.quizzes.length > 0 && (
+                              <span className="mr-2">، {course.quizzes.length} {course.quizzes.length === 1 ? "اختبار" : "اختبارات"}</span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          <span>{course.enrollmentCount ?? 0} طالب مسجل</span>
+                        </div>
                       </div>
                       <Button 
                         className="w-full bg-[#0083d3] hover:bg-[#0083d3]/90 text-white" 

@@ -8,14 +8,13 @@ export async function GET() {
         isPublished: true,
       },
       include: {
-        user: true,
         chapters: {
           where: {
             isPublished: true,
           },
           select: {
             id: true,
-          }
+          },
         },
         quizzes: {
           where: {
@@ -23,7 +22,15 @@ export async function GET() {
           },
           select: {
             id: true,
-          }
+          },
+        },
+        purchases: {
+          where: {
+            status: "ACTIVE",
+          },
+          select: {
+            id: true,
+          },
         },
       },
       orderBy: {
@@ -32,9 +39,10 @@ export async function GET() {
     });
 
     // Return courses with default progress of 0 for public view
-    const coursesWithDefaultProgress = courses.map(course => ({
+    const coursesWithDefaultProgress = courses.map(({ purchases, ...course }) => ({
       ...course,
-      progress: 0
+      progress: 0,
+      enrollmentCount: purchases.length,
     }));
 
     return NextResponse.json(coursesWithDefaultProgress);
