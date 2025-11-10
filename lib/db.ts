@@ -15,27 +15,27 @@ function createPrismaClient() {
     const directDatabaseUrl = process.env.DIRECT_DATABASE_URL;
     const databaseUrl = process.env.DATABASE_URL;
 
-    if (isEdgeRuntime) {
-        if (!accelerateUrl) {
-            throw new Error("PRISMA_ACCELERATE_URL must be set in Edge runtimes.");
-        }
-
+    if (accelerateUrl) {
         return new PrismaClientEdge({
             datasourceUrl: accelerateUrl,
         }).$extends(withAccelerate());
     }
 
-    const datasourceUrl = accelerateUrl ?? directDatabaseUrl ?? databaseUrl;
-
-    if (!datasourceUrl) {
-        throw new Error("Missing DATABASE_URL, DIRECT_DATABASE_URL, or PRISMA_ACCELERATE_URL environment variable.");
+    if (isEdgeRuntime) {
+        throw new Error("PRISMA_ACCELERATE_URL must be set in Edge runtimes.");
     }
 
-    const client = new PrismaClientNode({
-        datasourceUrl,
-    });
+    const datasourceUrl = directDatabaseUrl ?? databaseUrl;
 
-    return accelerateUrl ? client.$extends(withAccelerate()) : client;
+    if (!datasourceUrl) {
+        throw new Error("Missing DATABASE_URL or DIRECT_DATABASE_URL environment variable.");
+    }
+
+    return new PrismaClientNode({
+        datasources: {
+            db: { url: datasourceUrl },
+        },
+    });
 }
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();

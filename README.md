@@ -30,7 +30,7 @@ DIRECT_DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
 PRISMA_ACCELERATE_URL="https://accelerate.prisma-data.net/..."
 ```
 
-- `PRISMA_ACCELERATE_URL` is required at runtime (including the Edge runtime). When unset the app falls back to a direct database connection.
+- `PRISMA_ACCELERATE_URL` enables Accelerate. When this value is present the application automatically routes Prisma traffic through Accelerate (even when running in a Node.js runtime). When it is omitted, the app falls back to a direct database connection.
 - `DIRECT_DATABASE_URL` is used for migrations and seeding to ensure schema changes bypass the Accelerate proxy.
 
 ### Prisma commands
