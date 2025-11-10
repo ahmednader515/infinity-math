@@ -1,6 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const datasourceUrl = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
+
+if (!datasourceUrl) {
+    throw new Error("Missing DIRECT_DATABASE_URL or DATABASE_URL environment variable.");
+}
+
+const prisma = new PrismaClient({
+    datasourceUrl,
+});
 
 async function main() {
     console.log("Database seeded successfully!");

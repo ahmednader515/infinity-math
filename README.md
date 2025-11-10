@@ -20,17 +20,21 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## Database & Prisma
 
-To learn more about Next.js, take a look at the following resources:
+This project now targets PostgreSQL and uses [Prisma Accelerate](https://www.prisma.io/accelerate) for pooled connections. Provide the following environment variables before running any Prisma or Next.js command:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?connection_limit=1"
+DIRECT_DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+PRISMA_ACCELERATE_URL="https://accelerate.prisma-data.net/..."
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `PRISMA_ACCELERATE_URL` is required at runtime (including the Edge runtime). When unset the app falls back to a direct database connection.
+- `DIRECT_DATABASE_URL` is used for migrations and seeding to ensure schema changes bypass the Accelerate proxy.
 
-## Deploy on Vercel
+### Prisma commands
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Generate client: `npx prisma generate`
+- Apply schema to a fresh database: `npx prisma migrate deploy`
+- Reset development database: `npx prisma migrate reset`
