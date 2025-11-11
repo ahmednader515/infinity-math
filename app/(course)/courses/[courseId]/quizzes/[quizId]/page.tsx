@@ -297,11 +297,14 @@ export default function QuizPage({
                                 <RadioGroup
                                     value={answers.find(a => a.questionId === currentQuestionData.id)?.answer || ""}
                                     onValueChange={(value) => handleAnswerChange(currentQuestionData.id, value)}
+                                    className="space-y-3"
                                 >
                                     {(Array.isArray(currentQuestionData.options) ? currentQuestionData.options : parseQuizOptions(currentQuestionData.options || null)).map((option: string, index: number) => (
-                                        <div key={index} className="flex items-center space-x-2">
+                                        <div key={index} className="flex items-center justify-end gap-3">
+                                            <Label htmlFor={`option-${index}`} className="text-right">
+                                                {option}
+                                            </Label>
                                             <RadioGroupItem value={option} id={`option-${index}`} />
-                                            <Label htmlFor={`option-${index}`}>{option}</Label>
                                         </div>
                                     ))}
                                 </RadioGroup>
