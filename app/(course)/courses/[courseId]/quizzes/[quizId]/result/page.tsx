@@ -31,14 +31,6 @@ interface QuizResult {
     answers: QuizAnswer[];
 }
 
-interface Quiz {
-    id: string;
-    title: string;
-    maxAttempts: number;
-    currentAttempt: number;
-    previousAttempts: number;
-}
-
 export default function QuizResultPage({
     params,
 }: {
@@ -47,13 +39,11 @@ export default function QuizResultPage({
     const router = useRouter();
     const { courseId, quizId } = use(params);
     const [result, setResult] = useState<QuizResult | null>(null);
-    const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [loading, setLoading] = useState(true);
     const [willRedirectToDashboard, setWillRedirectToDashboard] = useState(false);
 
     useEffect(() => {
         fetchResult();
-        fetchQuiz();
         checkNextContent();
     }, [quizId]);
 
@@ -97,20 +87,6 @@ export default function QuizResultPage({
         }
     };
 
-    const fetchQuiz = async () => {
-        try {
-            const response = await fetch(`/api/courses/${courseId}/quizzes/${quizId}/info`);
-            if (response.ok) {
-                const data = await response.json();
-                setQuiz(data);
-            } else {
-                console.error("Error fetching quiz info");
-            }
-        } catch (error) {
-            console.error("Error fetching quiz:", error);
-        }
-    };
-
     const getGradeColor = (percentage: number) => {
         if (percentage >= 90) return "text-green-600";
         if (percentage >= 80) return "text-green-500";
@@ -125,10 +101,6 @@ export default function QuizResultPage({
         if (percentage >= 70) return { variant: "default" as const, className: "bg-green-400 text-white" };
         if (percentage >= 60) return { variant: "default" as const, className: "bg-orange-600 text-white" };
         return { variant: "destructive" as const, className: "" };
-    };
-
-    const handleTryAgain = () => {
-        router.push(`/courses/${courseId}/quizzes/${quizId}`);
     };
 
     const handleNextChapter = async () => {
@@ -164,8 +136,6 @@ export default function QuizResultPage({
              router.push(`/dashboard`);
          }
     };
-
-    const canRetakeQuiz = quiz && result && (result.attemptNumber < quiz.maxAttempts);
 
     const formatAnswer = (answer: string, questionType: string) => {
         if (questionType === "TRUE_FALSE") {
@@ -307,21 +277,12 @@ export default function QuizResultPage({
 
                     {/* Actions */}
                     <div className="flex justify-center gap-4">
-                        {canRetakeQuiz ? (
-                            <Button
-                                onClick={handleTryAgain}
-                                className="bg-[#0083d3] hover:bg-[#0083d3]/90"
-                            >
-                                إعادة الاختبار
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={handleNextChapter}
-                                className="bg-[#0083d3] hover:bg-[#0083d3]/90"
-                            >
-                                {willRedirectToDashboard ? "لوحة التحكم" : "الفصل التالي"}
-                            </Button>
-                        )}
+                        <Button
+                            onClick={handleNextChapter}
+                            className="bg-[#0083d3] hover:bg-[#0083d3]/90"
+                        >
+                            {willRedirectToDashboard ? "لوحة التحكم" : "الفصل التالي"}
+                        </Button>
                     </div>
                 </div>
             </div>

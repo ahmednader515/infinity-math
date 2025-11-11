@@ -30,6 +30,7 @@ model User {
   userProgress            UserProgress[]
   balanceTransactions     BalanceTransaction[]
   quizResults             QuizResult[]
+  quizAttempts            QuizAttempt[]
 }
 
 model Course {
@@ -159,6 +160,7 @@ model Quiz {
     course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
     questions Question[]
     quizResults QuizResult[]
+  attempts QuizAttempt[]
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
@@ -199,6 +201,21 @@ model QuizResult {
     updatedAt DateTime @updatedAt
 
     @@index([studentId, quizId])
+    @@index([quizId])
+}
+
+model QuizAttempt {
+    id String @id @default(uuid())
+    studentId String
+    quizId String
+    startedAt DateTime @default(now())
+    completedAt DateTime?
+
+    user User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+    quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+    @@unique([studentId, quizId])
+    @@index([studentId])
     @@index([quizId])
 }
 

@@ -12,6 +12,9 @@ import { Course, Purchase } from "@prisma/client";
 type CourseWithDetails = Course & {
     chapters: { id: string }[];
     purchases: Purchase[];
+    _count: {
+        purchases: number;
+    };
     progress: number;
 }
 
@@ -48,6 +51,11 @@ export default async function SearchPage({
             purchases: {
                 where: {
                     userId: session.user.id,
+                }
+            },
+            _count: {
+                select: {
+                    purchases: true,
                 }
             }
         },
@@ -168,7 +176,7 @@ export default async function SearchPage({
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Users className="h-4 w-4" />
-                                            <span className="whitespace-nowrap">{course.purchases.length} طالب</span>
+                                            <span className="whitespace-nowrap">{course._count.purchases} طالب</span>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Clock className="h-4 w-4" />

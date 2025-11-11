@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,8 +59,13 @@ export default function QuizPage({
         previousContentType: 'chapter' | 'quiz' | null;
     } | null>(null);
     const [redirectToResult, setRedirectToResult] = useState(false);
+    const lastFetchedQuizIdRef = useRef<string | null>(null);
 
     useEffect(() => {
+        if (lastFetchedQuizIdRef.current === quizId) {
+            return;
+        }
+        lastFetchedQuizIdRef.current = quizId;
         fetchQuiz();
         fetchNavigation();
     }, [quizId]);
@@ -91,8 +96,11 @@ export default function QuizPage({
                 setTimeLeft(timerInSeconds);
             } else {
                 const errorText = await response.text();
-                if (errorText.includes("Maximum attempts reached")) {
-                    toast.error("لقد استنفذت جميع المحاولات المسموحة لهذا الاختبار");
+                if (
+                    errorText.includes("Maximum attempts reached") ||
+                    errorText.includes("Quiz attempt already started")
+                ) {
+                    toast.error("لا يمكنك فتح هذا الاختبار مرة أخرى.");
                     // Set flag to redirect to result page when no attempts remaining
                     setRedirectToResult(true);
                 } else {
@@ -244,11 +252,6 @@ export default function QuizPage({
                             <Badge variant="secondary">
                                 السؤال {currentQuestion + 1} من {quiz.questions.length}
                             </Badge>
-                            {quiz.maxAttempts > 1 && (
-                                <Badge variant="outline">
-                                    المحاولة {quiz.currentAttempt || 1} من {quiz.maxAttempts}
-                                </Badge>
-                            )}
                         </div>
                     </div>
 
@@ -369,10 +372,7 @@ export default function QuizPage({
                                 <span className="font-medium">تنبيه</span>
                             </div>
                             <p className="text-amber-700 mt-2">
-                                {quiz.maxAttempts > 1 
-                                    ? `تأكد من إجابة جميع الأسئلة قبل إنهاء الاختبار. يمكنك إعادة الاختبار ${quiz.maxAttempts - (quiz.currentAttempt || 1)} مرات أخرى.`
-                                    : "تأكد من إجابة جميع الأسئلة قبل إنهاء الاختبار. لا يمكنك العودة للاختبار بعد الإرسال."
-                                }
+                                تأكد من إجابة جميع الأسئلة قبل إنهاء الاختبار. لا يمكنك العودة للاختبار بعد الإرسال أو مغادرة الصفحة.
                             </p>
                         </CardContent>
                     </Card>

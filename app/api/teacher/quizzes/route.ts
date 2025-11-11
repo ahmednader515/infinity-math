@@ -63,8 +63,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const { userId } = await auth();
-        const { title, description, courseId, questions, position, timer, maxAttempts } = await req.json();
+        const { userId, user } = await auth();
+        const { title, description, courseId, questions, position, timer } = await req.json();
 
         console.log("Received position:", position, "Type:", typeof position);
 
@@ -85,12 +85,15 @@ export async function POST(req: Request) {
         const course = await db.course.findUnique({
             where: {
                 id: courseId,
-                userId: userId
             }
         });
 
         if (!course) {
-            return NextResponse.json({ error: "Course not found or unauthorized" }, { status: 404 });
+            return NextResponse.json({ error: "Course not found" }, { status: 404 });
+        }
+
+        if (user?.role !== "ADMIN" && course.userId !== userId) {
+            return NextResponse.json({ error: "Unauthorized to create quiz for this course" }, { status: 403 });
         }
 
         // Get the next position if not provided
@@ -159,7 +162,7 @@ export async function POST(req: Request) {
             position: quizPosition,
             courseId,
             timer: timer || null,
-            maxAttempts: maxAttempts || 1
+            maxAttempts: 1
         });
         
         const quizData = {
@@ -168,7 +171,7 @@ export async function POST(req: Request) {
             position: Number(quizPosition), // Explicitly cast to number
             courseId,
             timer: timer || null, // Timer in minutes, null means no time limit
-            maxAttempts: maxAttempts || 1, // Default to 1 attempt if not specified
+            maxAttempts: 1, // Always single attempt
                             questions: {
                     create: questions.map((question: any, index: number) => {
                         let correctAnswerValue = question.correctAnswer;
@@ -201,7 +204,8 @@ export async function POST(req: Request) {
             position: Number(quizPosition),
             courseId,
             timer: timer || null,
-            maxAttempts: maxAttempts || 1
+            maxAttempts: 1,
+            isPublished: true
         };
         
         console.log("Quiz data without questions:", JSON.stringify(quizDataWithoutQuestions, null, 2));

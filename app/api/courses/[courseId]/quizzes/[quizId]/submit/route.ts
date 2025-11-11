@@ -121,6 +121,23 @@ export async function POST(
 
         const percentage = totalPoints > 0 ? (totalScore / totalPoints) * 100 : 0;
 
+        await db.quizAttempt.upsert({
+            where: {
+                studentId_quizId: {
+                    studentId: userId,
+                    quizId: resolvedParams.quizId
+                }
+            },
+            update: {
+                completedAt: new Date()
+            },
+            create: {
+                studentId: userId,
+                quizId: resolvedParams.quizId,
+                completedAt: new Date()
+            }
+        });
+
         // Create quiz result
         const quizResult = await db.quizResult.create({
             data: {

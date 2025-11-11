@@ -77,6 +77,26 @@ export async function GET(
             return new NextResponse("Maximum attempts reached for this quiz", { status: 400 });
         }
 
+        const existingAttempt = await db.quizAttempt.findUnique({
+            where: {
+                studentId_quizId: {
+                    studentId: userId,
+                    quizId: resolvedParams.quizId
+                }
+            }
+        });
+
+        if (existingAttempt) {
+            return new NextResponse("Quiz attempt already started and cannot be reopened", { status: 400 });
+        }
+
+        await db.quizAttempt.create({
+            data: {
+                studentId: userId,
+                quizId: resolvedParams.quizId
+            }
+        });
+
         // Add attempt information to the quiz response
         const quizWithAttemptInfo = {
             ...quiz,
