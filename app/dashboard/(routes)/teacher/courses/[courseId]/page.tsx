@@ -11,6 +11,8 @@ import { CourseContentForm } from "./_components/course-content-form";
 import { Banner } from "@/components/banner";
 import { Actions } from "./_components/actions";
 
+const isStaff = (role?: string | null) => role === "ADMIN" || role === "TEACHER";
+
 export default async function CourseIdPage({
     params,
 }: {
@@ -47,8 +49,7 @@ export default async function CourseIdPage({
         return redirect("/");
     }
 
-    // Only owner or admin can view editor
-    if (user?.role !== "ADMIN" && course.userId !== userId) {
+    if (!isStaff(user?.role)) {
         return redirect("/dashboard");
     }
 

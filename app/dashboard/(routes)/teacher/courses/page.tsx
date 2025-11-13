@@ -9,16 +9,18 @@ import { PlusCircle, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const CoursesPage = async () => {
-    const { userId } = await auth();
+    const { userId, user } = await auth();
 
     if (!userId) {
         return redirect("/");
     }
 
+    const isStaff = user?.role === "ADMIN" || user?.role === "TEACHER";
+    if (!isStaff) {
+        return redirect("/");
+    }
+
     const courses = await db.course.findMany({
-        where: {
-            userId,
-        },
         include: {
             chapters: {
                 select: {
@@ -49,7 +51,7 @@ const CoursesPage = async () => {
     return (
         <div className="p-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">الكورسات الخاصة بك</h1>
+                <h1 className="text-2xl font-bold">إدارة الكورسات</h1>
                 <Link href="/dashboard/teacher/courses/create">
                     <Button className="bg-[#0083d3] hover:bg-[#0083d3]/90 text-white">
                         <PlusCircle className="h-4 w-4 mr-2" />

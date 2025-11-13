@@ -37,12 +37,14 @@ export async function GET(
   }
 }
 
+const isStaff = (role?: string | null) => role === "ADMIN" || role === "TEACHER";
+
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ courseId: string }> }
 ) {
     try {
-        const { userId } = await auth();
+        const { userId, user } = await auth();
         const resolvedParams = await params;
         const { title } = await req.json();
 
@@ -50,15 +52,18 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const courseOwner = await db.course.findUnique({
+        if (!isStaff(user?.role)) {
+            return new NextResponse("Forbidden", { status: 403 });
+        }
+
+        const course = await db.course.findUnique({
             where: {
-                id: resolvedParams.courseId,
-                userId: userId,
+                id: resolvedParams.courseId
             }
         });
 
-        if (!courseOwner) {
-            return new NextResponse("Unauthorized", { status: 401 });
+        if (!course) {
+            return new NextResponse("Course not found", { status: 404 });
         }
 
         const lastChapter = await db.chapter.findFirst({
@@ -85,4 +90,4 @@ export async function POST(
         console.log("[CHAPTERS]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
-} 
+}

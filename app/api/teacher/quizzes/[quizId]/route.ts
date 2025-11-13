@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { parseQuizOptions, stringifyQuizOptions } from "@/lib/utils";
 
+const isStaff = (role?: string | null) => role === "ADMIN" || role === "TEACHER";
+
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ quizId: string }> }
@@ -11,22 +13,16 @@ export async function GET(
         const { userId, user } = await auth();
         const resolvedParams = await params;
 
-        console.log("[TEACHER_QUIZ_GET] Fetching quiz:", resolvedParams.quizId, "for user:", userId);
-
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Get the quiz; if not admin, ensure it belongs to the teacher
-        const quiz = await db.quiz.findFirst({
-            where: user?.role === "ADMIN"
-                ? { id: resolvedParams.quizId }
-                : {
-                    id: resolvedParams.quizId,
-                    course: {
-                        userId: userId,
-                    },
-                },
+        if (!isStaff(user?.role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const quiz = await db.quiz.findUnique({
+            where: { id: resolvedParams.quizId },
             include: {
                 course: {
                     select: {
@@ -53,13 +49,9 @@ export async function GET(
         });
 
         if (!quiz) {
-            console.log("[TEACHER_QUIZ_GET] Quiz not found for ID:", resolvedParams.quizId);
             return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
         }
 
-        console.log("[TEACHER_QUIZ_GET] Quiz found:", quiz.id, "with", quiz.questions.length, "questions");
-
-        // Parse options for multiple choice questions
         const quizWithParsedOptions = {
             ...quiz,
             questions: quiz.questions.map(question => {
@@ -80,8 +72,6 @@ export async function GET(
 
         return NextResponse.json(quizWithParsedOptions);
     } catch (error) {
-        console.log("[TEACHER_QUIZ_GET] Error details:", error);
-        console.log("[TEACHER_QUIZ_GET] Error stack:", (error as Error).stack);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }
@@ -99,19 +89,17 @@ export async function PATCH(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Get the current quiz to know its course and owner
+        if (!isStaff(user?.role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const currentQuiz = await db.quiz.findUnique({
             where: { id: resolvedParams.quizId },
-            select: { courseId: true, position: true, course: { select: { userId: true } } }
+            select: { courseId: true, position: true }
         });
 
         if (!currentQuiz) {
             return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
-        }
-
-        // Only owner or admin can modify
-        if (user?.role !== "ADMIN" && currentQuiz.course.userId !== userId) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
         // Use the courseId from request if provided, otherwise use current quiz's courseId

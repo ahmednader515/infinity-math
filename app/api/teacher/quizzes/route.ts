@@ -3,20 +3,21 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { parseQuizOptions, stringifyQuizOptions } from "@/lib/utils";
 
+const isStaff = (role?: string | null) => role === "ADMIN" || role === "TEACHER";
+
 export async function GET(req: Request) {
     try {
-        const { userId } = await auth();
+        const { userId, user } = await auth();
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        if (!isStaff(user?.role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const quizzes = await db.quiz.findMany({
-            where: {
-                course: {
-                    userId: userId
-                }
-            },
             include: {
                 course: {
                     select: {
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
                 }
             },
             orderBy: {
-                position: "asc"
+                createdAt: "desc"
             }
         });
 
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
 
-        if (user?.role !== "ADMIN" && course.userId !== userId) {
+        if (!isStaff(user?.role)) {
             return NextResponse.json({ error: "Unauthorized to create quiz for this course" }, { status: 403 });
         }
 

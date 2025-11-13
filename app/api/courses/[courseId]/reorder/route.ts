@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+const isStaff = (role?: string | null) => role === "ADMIN" || role === "TEACHER";
+
 export async function PUT(
     req: Request,
     { params }: { params: Promise<{ courseId: string }> }
 ) {
     try {
-        const { userId } = await auth();
+        const { userId, user } = await auth();
         const resolvedParams = await params;
         const { list } = await req.json();
 
@@ -15,22 +17,23 @@ export async function PUT(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const courseOwner = await db.course.findUnique({
+        if (!isStaff(user?.role)) {
+            return new NextResponse("Forbidden", { status: 403 });
+        }
+
+        const course = await db.course.findUnique({
             where: {
                 id: resolvedParams.courseId,
-                userId: userId,
             }
         });
 
-        if (!courseOwner) {
-            return new NextResponse("Unauthorized", { status: 401 });
+        if (!course) {
+            return new NextResponse("Course not found", { status: 404 });
         }
 
-        // Separate chapters and quizzes
         const chapters = list.filter((item: any) => item.type === "chapter");
         const quizzes = list.filter((item: any) => item.type === "quiz");
 
-        // Update chapters
         for (const item of chapters) {
             await db.chapter.update({
                 where: { id: item.id },
@@ -38,7 +41,6 @@ export async function PUT(
             });
         }
 
-        // Update quizzes
         for (const item of quizzes) {
             await db.quiz.update({
                 where: { id: item.id },
@@ -51,4 +53,4 @@ export async function PUT(
         console.log("[MIXED_REORDER]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
-} 
+}

@@ -112,12 +112,14 @@ export async function GET(
     }
 }
 
+const isStaff = (role?: string | null) => role === "ADMIN" || role === "TEACHER";
+
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ courseId: string; quizId: string }> }
 ) {
     try {
-        const { userId } = await auth();
+        const { userId, user } = await auth();
         const resolvedParams = await params;
         const { title, description, questions, position } = await req.json();
 
@@ -125,19 +127,18 @@ export async function PATCH(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        // Verify the course belongs to the teacher
+        if (!isStaff(user?.role)) {
+            return new NextResponse("Forbidden", { status: 403 });
+        }
+
         const course = await db.course.findUnique({
-            where: {
-                id: resolvedParams.courseId,
-                userId: userId
-            }
+            where: { id: resolvedParams.courseId }
         });
 
         if (!course) {
-            return new NextResponse("Course not found or unauthorized", { status: 404 });
+            return new NextResponse("Course not found", { status: 404 });
         }
 
-        // Update the quiz
         const updatedQuiz = await db.quiz.update({
             where: {
                 id: resolvedParams.quizId,
@@ -186,26 +187,28 @@ export async function DELETE(
     { params }: { params: Promise<{ courseId: string; quizId: string }> }
 ) {
     try {
-        const { userId } = await auth();
+        const { userId, user } = await auth();
         const resolvedParams = await params;
 
         if (!userId) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        // Verify the course belongs to the teacher
-        const course = await db.course.findUnique({
+        if (!isStaff(user?.role)) {
+            return new NextResponse("Forbidden", { status: 403 });
+        }
+
+        const quiz = await db.quiz.findUnique({
             where: {
-                id: resolvedParams.courseId,
-                userId: userId
+                id: resolvedParams.quizId,
+                courseId: resolvedParams.courseId
             }
         });
 
-        if (!course) {
-            return new NextResponse("Course not found or unauthorized", { status: 404 });
+        if (!quiz) {
+            return new NextResponse("Quiz not found", { status: 404 });
         }
 
-        // Delete the quiz and all related data
         await db.quiz.delete({
             where: {
                 id: resolvedParams.quizId,
@@ -218,4 +221,4 @@ export async function DELETE(
         console.log("[QUIZ_DELETE]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
-} 
+}
