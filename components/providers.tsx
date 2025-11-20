@@ -7,7 +7,7 @@ import { Toaster } from "sonner";
 import { RTLProvider } from "@/components/providers/rtl-provider";
 import { NavigationProvider } from "@/lib/contexts/navigation-context";
 import { NavigationLoading } from "@/components/navigation-loading";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 // Component to handle session loading states
 const SessionHandler = ({ children }: { children: React.ReactNode }) => {
@@ -40,7 +40,9 @@ export const Providers = ({ children }: { children: React.ReactNode }) => {
               disableTransitionOnChange
             >
               <ToastProvider />
-              <NavigationLoading />
+              <Suspense fallback={null}>
+                <NavigationLoading />
+              </Suspense>
               {children}
               <Toaster />
             </ThemeProvider>
