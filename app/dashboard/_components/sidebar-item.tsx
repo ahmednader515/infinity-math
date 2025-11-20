@@ -27,13 +27,20 @@ export const SidebarItem = ({
     const isActive = pathName === href;
 
     const onClick = () => {
-        if (!isActive) router.push(href);
+        if (!isActive) {
+            // Dispatch event to show loader immediately
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("navigation-start"));
+            }
+            router.push(href);
+        }
     }
 
     const ButtonEl = (
         <button
             onClick={onClick}
             type="button"
+            data-navigate="true"
             className={cn(
                 "flex items-center gap-x-2 text-muted-foreground text-sm font-[500] rtl:pr-6 ltr:pl-6 transition-all hover:text-primary hover:bg-primary/10",
                 isActive && "text-primary bg-primary/10 hover:bg-primary/10"
