@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Star, Users, BookOpen, Award, ChevronDown } from "lucide-react";
+import { ArrowRight, Star, Users, BookOpen, Award, ChevronDown, Headphones } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/navbar";
@@ -522,10 +522,10 @@ export default function HomePage() {
               className="text-center p-6 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all"
             >
               <div className="w-12 h-12 bg-[#0083d3]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Award className="h-6 w-6 text-[#0083d3]" />
+                <Headphones className="h-6 w-6 text-[#0083d3]" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">شهادات تقدير</h3>
-              <p className="text-muted-foreground">احصل على شهادات تقدير عند إكمال الكورسات</p>
+              <h3 className="text-xl font-semibold mb-2">دعم 24 ساعة</h3>
+              <p className="text-muted-foreground">فريق دعم متاح على مدار الساعة لمساعدتك في أي وقت</p>
             </motion.div>
           </motion.div>
         </motion.div>

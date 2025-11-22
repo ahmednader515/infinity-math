@@ -49,6 +49,11 @@ const teacherRoutes = [
         href: "/dashboard/teacher/users",
     },
     {
+        icon: TrendingUp,
+        label: "تقدم الطلاب",
+        href: "/dashboard/teacher/progress",
+    },
+    {
         icon: Wallet,
         label: "إدارة الأرصدة",
         href: "/dashboard/teacher/balances",
