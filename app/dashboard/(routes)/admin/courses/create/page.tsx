@@ -21,5 +21,3 @@ const AdminCreateCoursePage = async () => {
 };
 
 export default AdminCreateCoursePage;
-
-

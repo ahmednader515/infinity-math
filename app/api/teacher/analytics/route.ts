@@ -31,22 +31,27 @@ export async function GET() {
       select: { role: true }
     });
 
-    // Only TEACHER can access analytics
-    if (!user || user.role !== "TEACHER") {
-      return new NextResponse("Forbidden - Only teachers can access analytics", { status: 403 });
+    // Only TEACHER or ADMIN can access analytics
+    if (!user || (user.role !== "TEACHER" && user.role !== "ADMIN")) {
+      return new NextResponse("Forbidden - Only teachers and admins can access analytics", { status: 403 });
     }
 
-    // Get all published courses by the user
+    // For TEACHER role, show all published courses (same as ADMIN)
+    // This allows teachers to see all course analytics regardless of course ownership
+    const courseWhereClause: any = {
+      isPublished: true,
+    };
+    
+    console.log("[ANALYTICS] Showing all published courses for", user.role);
+
+    // Get all published courses
     const courses = await db.course.findMany({
-      where: {
-        userId,
-        isPublished: true,
-      },
+      where: courseWhereClause,
       include: {
         purchases: {
-                  include: {
-          user: true,
-        },
+          include: {
+            user: true,
+          },
         },
         chapters: {
           where: {

@@ -19,4 +19,4 @@ const CreatePage = async () => {
     return redirect(`/dashboard/teacher/courses/${course.id}`);
 };
 
-export default CreatePage; 
+export default CreatePage;

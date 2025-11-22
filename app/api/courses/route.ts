@@ -33,18 +33,56 @@ export async function GET(req: Request) {
     
     // Try to get user, but don't fail if not authenticated
     let userId = null;
+    let student = null;
     try {
       const authResult = await auth();
       userId = authResult.userId;
+      
+      // Get student's grade and division for filtering
+      if (userId) {
+        student = await db.user.findUnique({
+          where: { id: userId },
+          select: { grade: true, division: true, role: true }
+        });
+      }
     } catch (error) {
       // User is not authenticated, which is fine for the home page
       console.log("User not authenticated, showing courses without progress");
     }
 
+    // Build where clause for course filtering
+    // If user is a student, filter by grade/division
+    // If course has no grade/division (old courses), show to everyone (backward compatibility)
+    // If user is teacher/admin or not authenticated, show all published courses
+    const whereClause: any = {
+      isPublished: true,
+    };
+
+    // Filter by student's grade and division if they're a regular user
+    if (student && student.role === "USER" && student.grade && student.division) {
+      whereClause.OR = [
+        // Courses for all grades (الكل)
+        { grade: "الكل" },
+        // Courses matching student's grade and division (student's division must be in divisions array)
+        {
+          AND: [
+            { grade: student.grade },
+            {
+              divisions: {
+                has: student.division
+              }
+            }
+          ]
+        },
+        // Old courses: no grade set yet (backward compatibility)
+        {
+          grade: null
+        }
+      ];
+    }
+
     const courses = await db.course.findMany({
-      where: {
-        isPublished: true,
-      },
+      where: whereClause,
       include: {
         user: true,
         chapters: {

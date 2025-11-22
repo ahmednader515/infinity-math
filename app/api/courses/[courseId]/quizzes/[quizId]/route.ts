@@ -86,16 +86,42 @@ export async function GET(
             }
         });
 
+        // If there's an existing attempt
         if (existingAttempt) {
-            return new NextResponse("Quiz attempt already started and cannot be reopened", { status: 400 });
-        }
-
-        await db.quizAttempt.create({
-            data: {
-                studentId: userId,
-                quizId: resolvedParams.quizId
+            // If the attempt is completed, allow retry by deleting it and creating a new one
+            if (existingAttempt.completedAt) {
+                console.log(`[QUIZ_GET] Found completed attempt, deleting and creating new one for retry`);
+                // Delete the completed attempt
+                await db.quizAttempt.delete({
+                    where: {
+                        studentId_quizId: {
+                            studentId: userId,
+                            quizId: resolvedParams.quizId
+                        }
+                    }
+                });
+                // Create a new attempt for retry
+                await db.quizAttempt.create({
+                    data: {
+                        studentId: userId,
+                        quizId: resolvedParams.quizId
+                    }
+                });
+            } else {
+                // If attempt is not completed, block access
+                console.log(`[QUIZ_GET] Found incomplete attempt, blocking access`);
+                return new NextResponse("Quiz attempt already started and cannot be reopened", { status: 400 });
             }
-        });
+        } else {
+            // No existing attempt, create a new one
+            console.log(`[QUIZ_GET] No existing attempt, creating new one`);
+            await db.quizAttempt.create({
+                data: {
+                    studentId: userId,
+                    quizId: resolvedParams.quizId
+                }
+            });
+        }
 
         // Add attempt information to the quiz response
         const quizWithAttemptInfo = {

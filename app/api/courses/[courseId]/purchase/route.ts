@@ -9,6 +9,8 @@ export async function POST(
   try {
     const { userId } = await auth();
     const resolvedParams = await params;
+    const body = await req.json();
+    const { promocode: promocodeInput } = body || {};
 
     if (!userId) {
       console.log("[PURCHASE_ERROR] No user ID found in auth");
@@ -58,7 +60,48 @@ export async function POST(
       return new NextResponse("User not found", { status: 404 });
     }
 
-    const coursePrice = course.price || 0;
+    let coursePrice = course.price || 0;
+    let discountAmount = 0;
+    let promocodeId = null;
+    let appliedPromocode = null;
+
+    // Validate and apply promocode if provided
+    if (promocodeInput) {
+      const promocode = await db.promoCode.findUnique({
+        where: { code: promocodeInput.toUpperCase().trim() },
+      });
+
+      if (promocode && promocode.isActive) {
+        const now = new Date();
+        const isValidDate = 
+          (!promocode.validFrom || new Date(promocode.validFrom) <= now) &&
+          (!promocode.validUntil || new Date(promocode.validUntil) >= now);
+        
+        const isWithinUsageLimit = !promocode.usageLimit || promocode.usedCount < promocode.usageLimit;
+        const meetsMinimumPurchase = !promocode.minPurchase || coursePrice >= promocode.minPurchase;
+
+        if (isValidDate && isWithinUsageLimit && meetsMinimumPurchase) {
+          // Calculate discount
+          if (promocode.discountType === "PERCENTAGE") {
+            discountAmount = (coursePrice * promocode.discountValue) / 100;
+            if (promocode.maxDiscount && discountAmount > promocode.maxDiscount) {
+              discountAmount = promocode.maxDiscount;
+            }
+          } else {
+            discountAmount = promocode.discountValue;
+          }
+          
+          // Can't discount more than the course price
+          if (discountAmount > coursePrice) {
+            discountAmount = coursePrice;
+          }
+
+          coursePrice = Math.max(0, coursePrice - discountAmount);
+          promocodeId = promocode.id;
+          appliedPromocode = promocode.code;
+        }
+      }
+    }
 
     // Check if user has sufficient balance
     if (user.balance < coursePrice) {
@@ -99,24 +142,44 @@ export async function POST(
       });
 
       // Create balance transaction record
+      const transactionDescription = appliedPromocode
+        ? `تم شراء الكورس: ${course.title} (كوبون خصم: ${appliedPromocode})`
+        : `تم شراء الكورس: ${course.title}`;
+
       await tx.balanceTransaction.create({
         data: {
           userId,
           amount: -coursePrice,
           type: "PURCHASE",
-          description: `تم شراء الكورس: ${course.title}`,
+          description: transactionDescription,
         },
       });
+
+      // Increment promocode usage count if applied
+      if (promocodeId) {
+        await tx.promoCode.update({
+          where: { id: promocodeId },
+          data: {
+            usedCount: {
+              increment: 1,
+            },
+          },
+        });
+      }
 
       return { purchase, updatedUser };
     });
 
-    console.log(`[PURCHASE_SUCCESS] User ${userId} successfully purchased course ${resolvedParams.courseId}`);
+    console.log(`[PURCHASE_SUCCESS] User ${userId} successfully purchased course ${resolvedParams.courseId}${appliedPromocode ? ` with promocode: ${appliedPromocode}` : ''}`);
 
     return NextResponse.json({
       success: true,
       purchaseId: result.purchase.id,
       newBalance: result.updatedUser.balance,
+      originalPrice: (course.price || 0).toFixed(2),
+      discountAmount: discountAmount.toFixed(2),
+      finalPrice: coursePrice.toFixed(2),
+      promocode: appliedPromocode,
     });
   } catch (error) {
     console.error("[PURCHASE_ERROR] Unexpected error:", error);

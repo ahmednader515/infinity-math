@@ -465,4 +465,5 @@ const GradesPage = () => {
     );
 };
 
-export default GradesPage; 
+export default GradesPage;
+

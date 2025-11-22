@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle, XCircle, Award } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Award, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 interface QuizAnswer {
     questionId: string;
@@ -28,6 +29,8 @@ interface QuizResult {
     percentage: number;
     submittedAt: string;
     attemptNumber: number;
+    maxAttempts?: number;
+    totalAttempts?: number;
     answers: QuizAnswer[];
 }
 
@@ -41,6 +44,8 @@ export default function QuizResultPage({
     const [result, setResult] = useState<QuizResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [willRedirectToDashboard, setWillRedirectToDashboard] = useState(false);
+    const [isRetrying, setIsRetrying] = useState(false);
+    const [canRetry, setCanRetry] = useState(false);
 
     useEffect(() => {
         fetchResult();
@@ -77,6 +82,12 @@ export default function QuizResultPage({
             if (response.ok) {
                 const data = await response.json();
                 setResult(data);
+                // Check if user can retry (hasn't reached max attempts and maxAttempts > 1)
+                if (data.maxAttempts && data.maxAttempts > 1 && data.totalAttempts < data.maxAttempts) {
+                    setCanRetry(true);
+                } else {
+                    setCanRetry(false);
+                }
             } else {
                 console.error("Error fetching result");
             }
@@ -84,6 +95,33 @@ export default function QuizResultPage({
             console.error("Error fetching result:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRetry = async () => {
+        setIsRetrying(true);
+        try {
+            const response = await fetch(`/api/courses/${courseId}/quizzes/${quizId}/retry`, {
+                method: "POST",
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                toast.success("يمكنك الآن إعادة محاولة الاختبار");
+                // Small delay to ensure database operations complete
+                await new Promise(resolve => setTimeout(resolve, 500));
+                // Navigate to the quiz page to start a new attempt
+                router.push(`/courses/${courseId}/quizzes/${quizId}`);
+                router.refresh(); // Force refresh to ensure clean state
+            } else {
+                const errorData = await response.json();
+                toast.error(errorData.error || "لا يمكن إعادة محاولة الاختبار");
+            }
+        } catch (error) {
+            console.error("Error retrying quiz:", error);
+            toast.error("حدث خطأ أثناء محاولة إعادة الاختبار");
+        } finally {
+            setIsRetrying(false);
         }
     };
 
@@ -171,8 +209,13 @@ export default function QuizResultPage({
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-4xl mx-auto space-y-6">
                     {/* Header */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between gap-4">
                         <h1 className="text-2xl font-bold">نتيجة الاختبار</h1>
+                        {result.maxAttempts && result.maxAttempts > 0 && (
+                            <Badge variant="outline" className="gap-1">
+                                المحاولة {result.attemptNumber} من {result.maxAttempts}
+                            </Badge>
+                        )}
                     </div>
 
                     {/* Summary Card */}
@@ -182,6 +225,11 @@ export default function QuizResultPage({
                                 <Award className="h-5 w-5" />
                                 ملخص النتيجة
                             </CardTitle>
+                            {result.maxAttempts && (
+                                <CardDescription>
+                                    المحاولة {result.attemptNumber} من {result.maxAttempts}
+                                </CardDescription>
+                            )}
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -277,6 +325,17 @@ export default function QuizResultPage({
 
                     {/* Actions */}
                     <div className="flex justify-center gap-4">
+                        {canRetry && result && result.maxAttempts && (
+                            <Button
+                                onClick={handleRetry}
+                                disabled={isRetrying}
+                                variant="outline"
+                                className="border-[#0083d3] text-[#0083d3] hover:bg-[#0083d3] hover:text-white"
+                            >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                {isRetrying ? "جاري التحضير..." : `إعادة المحاولة (${result.totalAttempts || 0}/${result.maxAttempts})`}
+                            </Button>
+                        )}
                         <Button
                             onClick={handleNextChapter}
                             className="bg-[#0083d3] hover:bg-[#0083d3]/90"

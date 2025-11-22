@@ -41,6 +41,7 @@ interface Quiz {
     createdAt: string;
     updatedAt: string;
     timer?: number;
+    maxAttempts?: number;
 }
 
 interface Question {
@@ -75,6 +76,7 @@ const EditQuizPage = () => {
     const [quizTitle, setQuizTitle] = useState("");
     const [quizDescription, setQuizDescription] = useState("");
     const [quizTimer, setQuizTimer] = useState<number | null>(null);
+    const [maxAttempts, setMaxAttempts] = useState<number>(1);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [selectedPosition, setSelectedPosition] = useState<number>(1);
     const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
@@ -120,6 +122,7 @@ const EditQuizPage = () => {
                 setQuizTitle(quiz.title);
                 setQuizDescription(quiz.description);
                 setQuizTimer(quiz.timer || null);
+                setMaxAttempts(quiz.maxAttempts || 1);
                 setSelectedCourse(quiz.courseId);
                 
                 // Convert stored string correctAnswer values back to indices for multiple choice questions
@@ -375,6 +378,7 @@ const EditQuizPage = () => {
                     questions: cleanedQuestions,
                     position: selectedPosition,
                     timer: quizTimer,
+                    maxAttempts: maxAttempts,
                 }),
             });
 
@@ -632,12 +636,25 @@ const EditQuizPage = () => {
                         </p>
                     </div>
                     <div className="space-y-2">
-                        <Label>سياسة المحاولات</Label>
-                        <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50 p-4">
-                            <p className="text-sm text-blue-700">
-                                الاختبار متاح لمحاولة واحدة فقط. عند مغادرة صفحة الاختبار ثم العودة لاحقاً، لن يتمكن الطالب من فتحه مجدداً.
-                            </p>
-                        </div>
+                        <Label>عدد المحاولات المسموحة</Label>
+                        <Input
+                            type="number"
+                            value={maxAttempts || ""}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === "") {
+                                    setMaxAttempts(1);
+                                } else {
+                                    const num = parseInt(value);
+                                    setMaxAttempts(isNaN(num) ? 1 : Math.max(1, num));
+                                }
+                            }}
+                            placeholder="1"
+                            min="1"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            عدد المرات التي يمكن للطالب محاولة الاختبار
+                        </p>
                     </div>
                 </div>
 
@@ -777,8 +794,16 @@ const EditQuizPage = () => {
                                         <Label>الدرجات</Label>
                                         <Input
                                             type="number"
-                                            value={question.points}
-                                            onChange={(e) => updateQuestion(index, "points", parseInt(e.target.value))}
+                                            value={question.points || ""}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value === "") {
+                                                    updateQuestion(index, "points", 1);
+                                                } else {
+                                                    const num = parseInt(value);
+                                                    updateQuestion(index, "points", isNaN(num) ? 1 : Math.max(1, num));
+                                                }
+                                            }}
                                             min="1"
                                         />
                                     </div>

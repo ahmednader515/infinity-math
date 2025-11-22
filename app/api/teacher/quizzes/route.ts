@@ -65,7 +65,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const { userId, user } = await auth();
-        const { title, description, courseId, questions, position, timer } = await req.json();
+        const { title, description, courseId, questions, position, timer, maxAttempts } = await req.json();
 
         console.log("Received position:", position, "Type:", typeof position);
 
@@ -156,6 +156,7 @@ export async function POST(req: Request) {
         }
 
         // Create the quiz
+        const finalMaxAttempts = maxAttempts && maxAttempts > 0 ? Number(maxAttempts) : 1;
         console.log("Creating quiz with position:", quizPosition);
         console.log("Quiz data object:", {
             title,
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
             position: quizPosition,
             courseId,
             timer: timer || null,
-            maxAttempts: 1
+            maxAttempts: finalMaxAttempts
         });
         
         const quizData = {
@@ -172,7 +173,7 @@ export async function POST(req: Request) {
             position: Number(quizPosition), // Explicitly cast to number
             courseId,
             timer: timer || null, // Timer in minutes, null means no time limit
-            maxAttempts: 1, // Always single attempt
+            maxAttempts: finalMaxAttempts, // Use provided maxAttempts or default to 1
                             questions: {
                     create: questions.map((question: any, index: number) => {
                         let correctAnswerValue = question.correctAnswer;
@@ -205,7 +206,7 @@ export async function POST(req: Request) {
             position: Number(quizPosition),
             courseId,
             timer: timer || null,
-            maxAttempts: 1,
+            maxAttempts: finalMaxAttempts, // Use provided maxAttempts or default to 1
             isPublished: true
         };
         

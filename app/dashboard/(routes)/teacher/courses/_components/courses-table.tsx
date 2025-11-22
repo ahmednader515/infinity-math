@@ -28,6 +28,7 @@ import Link from "next/link";
 import { Pencil, Trash2, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { EditGradeDivisionDialog } from "./edit-grade-division-dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -145,13 +146,14 @@ export function CoursesTable<TData extends { id: string }, TValue>({
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Link href={`/dashboard/teacher/courses/${row.original.id}`}>
-                                                    <Button variant="ghost" size="icon">
+                                                    <Button variant="ghost" size="icon" title="تعديل الكورس">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
                                                 </Link>
+                                                <EditGradeDivisionDialog course={row.original as any} />
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
+                                                        <Button variant="ghost" size="icon" title="حذف الكورس">
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </AlertDialogTrigger>
