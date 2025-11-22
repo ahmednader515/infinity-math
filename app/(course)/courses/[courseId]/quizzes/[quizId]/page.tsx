@@ -31,6 +31,9 @@ interface Quiz {
     maxAttempts: number;
     currentAttempt?: number;
     previousAttempts?: number;
+    isRetry?: boolean;
+    retryReason?: "submitted" | "incomplete" | "completed";
+    remainingAttempts?: number;
     questions: Question[];
 }
 
@@ -259,6 +262,37 @@ export default function QuizPage({
                             </Badge>
                         </div>
                     </div>
+
+                    {/* Retry Message */}
+                    {quiz.isRetry && (
+                        <Card className="border-blue-200 bg-blue-50">
+                            <CardContent className="pt-6">
+                                <div className="flex items-start gap-3">
+                                    <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                                    <div className="flex-1">
+                                        <div className="font-medium text-blue-900 mb-1">
+                                            {quiz.retryReason === "submitted" && "إعادة محاولة الاختبار"}
+                                            {quiz.retryReason === "incomplete" && "إعادة محاولة بعد محاولة غير مكتملة"}
+                                            {quiz.retryReason === "completed" && "إعادة محاولة الاختبار"}
+                                        </div>
+                                        <p className="text-sm text-blue-800">
+                                            {quiz.retryReason === "submitted" && 
+                                                `أنت تقوم بإعادة محاولة الاختبار. هذه المحاولة رقم ${quiz.currentAttempt || 1} من ${quiz.maxAttempts}.`}
+                                            {quiz.retryReason === "incomplete" && 
+                                                `تم احتساب محاولتك السابقة غير المكتملة كمحاولة. هذه المحاولة رقم ${quiz.currentAttempt || 1} من ${quiz.maxAttempts}.`}
+                                            {quiz.retryReason === "completed" && 
+                                                `أنت تقوم بإعادة محاولة الاختبار. هذه المحاولة رقم ${quiz.currentAttempt || 1} من ${quiz.maxAttempts}.`}
+                                            {quiz.remainingAttempts !== undefined && quiz.remainingAttempts > 0 && (
+                                                <span className="block mt-1">
+                                                    المحاولات المتبقية: {quiz.remainingAttempts}
+                                                </span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Quiz Info */}
                     <Card>

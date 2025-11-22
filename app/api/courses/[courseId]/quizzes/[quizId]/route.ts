@@ -71,12 +71,6 @@ export async function GET(
             }
         });
 
-        const currentAttemptNumber = existingResults.length + 1;
-
-        if (existingResults.length >= quiz.maxAttempts) {
-            return new NextResponse("Maximum attempts reached for this quiz", { status: 400 });
-        }
-
         const existingAttempt = await db.quizAttempt.findUnique({
             where: {
                 studentId_quizId: {
@@ -86,31 +80,101 @@ export async function GET(
             }
         });
 
+        // Count total attempts: submitted attempts (QuizResults) + incomplete attempts
+        const submittedAttempts = existingResults.length;
+        const hasIncompleteAttempt = existingAttempt && !existingAttempt.completedAt;
+        const totalAttempts = submittedAttempts + (hasIncompleteAttempt ? 1 : 0);
+
+        // Check if they've reached max attempts
+        if (totalAttempts >= quiz.maxAttempts) {
+            // If they have an incomplete attempt, they can't retry
+            if (hasIncompleteAttempt) {
+                return new NextResponse("Maximum attempts reached for this quiz. You have an incomplete attempt that counts as an attempt.", { status: 400 });
+            }
+            // If they only have submitted attempts and reached max, block
+            return new NextResponse("Maximum attempts reached for this quiz", { status: 400 });
+        }
+
+        const currentAttemptNumber = submittedAttempts + 1;
+        let isRetry = false;
+        let retryReason = null;
+
         // If there's an existing attempt
         if (existingAttempt) {
-            // If the attempt is completed, allow retry by deleting it and creating a new one
+            // If the attempt is completed (has completedAt)
             if (existingAttempt.completedAt) {
-                console.log(`[QUIZ_GET] Found completed attempt, deleting and creating new one for retry`);
-                // Delete the completed attempt
-                await db.quizAttempt.delete({
-                    where: {
-                        studentId_quizId: {
+                // Check if there's a corresponding QuizResult (meaning they submitted)
+                if (existingResults.length > 0) {
+                    // They already submitted, and we've confirmed they have retries left
+                    // Delete the completed attempt and create a new one for retry
+                    console.log(`[QUIZ_GET] Found completed and submitted attempt, allowing retry`);
+                    isRetry = true;
+                    retryReason = "submitted";
+                    await db.quizAttempt.delete({
+                        where: {
+                            studentId_quizId: {
+                                studentId: userId,
+                                quizId: resolvedParams.quizId
+                            }
+                        }
+                    });
+                    // Create a new attempt for retry
+                    await db.quizAttempt.create({
+                        data: {
                             studentId: userId,
                             quizId: resolvedParams.quizId
                         }
-                    }
-                });
-                // Create a new attempt for retry
-                await db.quizAttempt.create({
-                    data: {
-                        studentId: userId,
-                        quizId: resolvedParams.quizId
-                    }
-                });
+                    });
+                } else {
+                    // Completed attempt but no QuizResult (edge case - shouldn't happen normally)
+                    // Allow retry by deleting and creating new attempt
+                    console.log(`[QUIZ_GET] Found completed attempt without result, allowing retry`);
+                    isRetry = true;
+                    retryReason = "completed";
+                    await db.quizAttempt.delete({
+                        where: {
+                            studentId_quizId: {
+                                studentId: userId,
+                                quizId: resolvedParams.quizId
+                            }
+                        }
+                    });
+                    await db.quizAttempt.create({
+                        data: {
+                            studentId: userId,
+                            quizId: resolvedParams.quizId
+                        }
+                    });
+                }
             } else {
-                // If attempt is not completed, block access
-                console.log(`[QUIZ_GET] Found incomplete attempt, blocking access`);
-                return new NextResponse("Quiz attempt already started and cannot be reopened", { status: 400 });
+                // If attempt is not completed (no completedAt), it counts as an attempt
+                // If they have retries left, delete the incomplete attempt and allow a new one
+                console.log(`[QUIZ_GET] Found incomplete attempt, counting as attempt. Total attempts: ${totalAttempts}, Max: ${quiz.maxAttempts}`);
+                
+                if (totalAttempts < quiz.maxAttempts) {
+                    // They have retries left, delete the incomplete attempt and create a new one
+                    console.log(`[QUIZ_GET] Allowing retry after incomplete attempt`);
+                    isRetry = true;
+                    retryReason = "incomplete";
+                    await db.quizAttempt.delete({
+                        where: {
+                            studentId_quizId: {
+                                studentId: userId,
+                                quizId: resolvedParams.quizId
+                            }
+                        }
+                    });
+                    // Create a new attempt for retry
+                    await db.quizAttempt.create({
+                        data: {
+                            studentId: userId,
+                            quizId: resolvedParams.quizId
+                        }
+                    });
+                } else {
+                    // No retries left, block access
+                    return new NextResponse("Maximum attempts reached for this quiz. Your incomplete attempt counts as an attempt.", { status: 400 });
+                }
             }
         } else {
             // No existing attempt, create a new one
@@ -123,12 +187,19 @@ export async function GET(
             });
         }
 
+        // Calculate remaining attempts
+        // Remaining = maxAttempts - currentAttemptNumber (current attempt is in progress, so it counts)
+        const remainingAttempts = Math.max(0, quiz.maxAttempts - currentAttemptNumber);
+
         // Add attempt information to the quiz response
         const quizWithAttemptInfo = {
             ...quiz,
             currentAttempt: currentAttemptNumber,
             maxAttempts: quiz.maxAttempts,
-            previousAttempts: existingResults.length
+            previousAttempts: existingResults.length,
+            isRetry: isRetry,
+            retryReason: retryReason,
+            remainingAttempts: remainingAttempts
         };
 
         return NextResponse.json(quizWithAttemptInfo);
