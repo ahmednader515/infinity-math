@@ -14,6 +14,8 @@ export type Course = {
     price: number;
     isPublished: boolean;
     createdAt: Date;
+    grade?: string | null;
+    divisions?: string[];
 }
 
 export const columns: ColumnDef<Course>[] = [
@@ -87,6 +89,53 @@ export const columns: ColumnDef<Course>[] = [
         cell: ({ row }) => {
             const date = new Date(row.getValue("createdAt"));
             return <div>{format(date, "dd/MM/yyyy", { locale: ar })}</div>;
+        },
+    },
+    {
+        id: "gradeDivision",
+        header: "الصف والقسم",
+        cell: ({ row }) => {
+            const grade = row.original.grade;
+            const divisions = (row.original as any).divisions || [];
+            const legacyDivision = (row.original as any).division;
+            
+            // Handle legacy single division field
+            const displayDivisions = divisions.length > 0 
+                ? divisions 
+                : legacyDivision 
+                    ? [legacyDivision]
+                    : [];
+            
+            if (!grade) {
+                return (
+                    <Badge variant="secondary" className="text-xs">
+                        ⚠️ غير محدد
+                    </Badge>
+                );
+            }
+            
+            if (grade === "الكل") {
+                return (
+                    <div className="text-sm">
+                        <div className="font-medium">الكل (جميع الصفوف)</div>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="text-sm">
+                    <div className="font-medium">{grade}</div>
+                    {displayDivisions.length > 0 ? (
+                        <div className="text-muted-foreground text-xs">
+                            {displayDivisions.join(", ")}
+                        </div>
+                    ) : (
+                        <Badge variant="secondary" className="text-xs mt-1">
+                            ⚠️ غير محدد
+                        </Badge>
+                    )}
+                </div>
+            );
         },
     }
 ]; 

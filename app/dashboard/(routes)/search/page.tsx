@@ -1,10 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import { SearchInput } from "./_components/search-input";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { BookOpen, Clock, Users, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Course, Purchase } from "@prisma/client";
@@ -32,13 +34,81 @@ export default async function SearchPage({
     const resolvedParams = await searchParams;
     const title = typeof resolvedParams.title === 'string' ? resolvedParams.title : '';
 
+    // Get user's grade and division for filtering
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { grade: true, division: true, role: true }
+    });
+
+    console.log("[SEARCH_PAGE] User data:", { 
+        userId: session.user.id, 
+        role: user?.role, 
+        grade: user?.grade, 
+        division: user?.division,
+        title 
+    });
+
+    // Build where clause - filter by user's grade/division if they're a student
+    let whereClause: any = {
+        isPublished: true,
+    };
+
+    // Add title filter if exists
+    if (title) {
+        whereClause.title = {
+            contains: title,
+            mode: 'insensitive' as const
+        };
+    }
+
+    // Filter by student's grade and division if they're a regular user
+    // If user is teacher/admin, show all courses
+    if (user && user.role === "USER" && user.grade && user.division) {
+        // Build the filter for courses:
+        // 1. Courses with grade="الكل" - show to everyone
+        // 2. Courses with matching grade AND student's division in the divisions array
+        const gradeDivisionFilter = {
+            OR: [
+                // Courses for all grades
+                { grade: "الكل" },
+                // Courses matching student's grade and division
+                {
+                    AND: [
+                        { grade: user.grade },
+                        {
+                            divisions: {
+                                has: user.division
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Build AND clause to combine isPublished, title (if exists), and grade/division filter
+        const andConditions: any[] = [
+            { isPublished: true },
+            gradeDivisionFilter
+        ];
+
+        if (title) {
+            andConditions.push({
+                title: {
+                    contains: title,
+                    mode: 'insensitive' as const
+                }
+            });
+        }
+
+        whereClause = {
+            AND: andConditions
+        };
+    }
+
+    console.log("[SEARCH_PAGE] Where clause:", JSON.stringify(whereClause, null, 2));
+
     const courses = await db.course.findMany({
-        where: {
-            isPublished: true,
-            title: {
-                contains: title,
-            }
-        },
+        where: whereClause,
         include: {
             chapters: {
                 where: {
@@ -63,6 +133,17 @@ export default async function SearchPage({
             createdAt: "desc",
         }
     });
+
+    console.log("[SEARCH_PAGE] Found courses:", courses.length);
+    if (courses.length > 0) {
+        console.log("[SEARCH_PAGE] Sample course:", {
+            id: courses[0].id,
+            title: courses[0].title,
+            grade: courses[0].grade,
+            division: courses[0].division,
+            isPublished: courses[0].isPublished
+        });
+    }
 
     const coursesWithProgress = await Promise.all(
         courses.map(async (course) => {
@@ -104,7 +185,27 @@ export default async function SearchPage({
             {/* Search Input Section */}
             <div className="bg-card rounded-2xl p-6 border shadow-sm">
                 <div className="max-w-2xl mx-auto">
-                    <SearchInput />
+                    <Suspense fallback={
+                        <div className="flex items-center gap-x-3 w-full max-w-2xl">
+                            <div className="relative flex-1">
+                                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="ابحث عن كورسات تعليمية..."
+                                    className="h-12 pr-10 pl-4 text-base border-2"
+                                    disabled
+                                />
+                            </div>
+                            <Button 
+                                className="h-12 px-6 bg-[#0083d3] hover:bg-[#0083d3]/90 text-white font-semibold"
+                                disabled
+                            >
+                                <Search className="h-4 w-4 ml-2" />
+                                بحث
+                            </Button>
+                        </div>
+                    }>
+                        <SearchInput />
+                    </Suspense>
                 </div>
             </div>
 
@@ -213,7 +314,9 @@ export default async function SearchPage({
                             <p className="text-muted-foreground mb-6">
                                 {title 
                                     ? "جرب البحث بكلمات مختلفة أو تصفح جميع الكورسات"
-                                    : "سيتم إضافة كورسات جديدة قريباً"
+                                    : user && user.role === "USER" && user.grade && user.division
+                                        ? `لا توجد كورسات متاحة للصف "${user.grade}" والقسم "${user.division}" حالياً`
+                                        : "سيتم إضافة كورسات جديدة قريباً"
                                 }
                             </p>
                             {title && (

@@ -7,6 +7,7 @@ import { TitleForm } from "./_components/title-form";
 import { DescriptionForm } from "./_components/description-form";
 import { ImageForm } from "./_components/image-form";
 import { PriceForm } from "./_components/price-form";
+import { CourseGradeDivisionForm } from "./_components/course-grade-division-form";
 import { CourseContentForm } from "./_components/course-content-form";
 import { Banner } from "@/components/banner";
 import { Actions } from "./_components/actions";
@@ -53,12 +54,18 @@ export default async function CourseIdPage({
         return redirect("/dashboard");
     }
 
+    // Check if grade/division is set
+    // Grade is complete if: grade is "الكل" OR (grade is set AND divisions array has at least one item)
+    const hasGradeDivision = course.grade === "الكل" || 
+        (course.grade && course.divisions && course.divisions.length > 0);
+
     const requiredFields = [
         course.title,
         course.description,
         course.imageUrl,
         course.price,
-        course.chapters.some(chapter => chapter.isPublished)
+        course.chapters.some(chapter => chapter.isPublished),
+        hasGradeDivision
     ];
 
     const totalFields = requiredFields.length;
@@ -74,7 +81,8 @@ export default async function CourseIdPage({
         description: !!course.description,
         imageUrl: !!course.imageUrl,
         price: course.price !== null && course.price !== undefined,
-        publishedChapters: course.chapters.some(chapter => chapter.isPublished)
+        publishedChapters: course.chapters.some(chapter => chapter.isPublished),
+        gradeDivision: hasGradeDivision
     };
 
     return (
@@ -117,6 +125,10 @@ export default async function CourseIdPage({
                                         <span>{completionStatus.publishedChapters ? '✓' : '✗'}</span>
                                         <span>فصل منشور</span>
                                     </div>
+                                    <div className={`flex items-center gap-1 ${completionStatus.gradeDivision ? 'text-green-600' : 'text-red-600'}`}>
+                                        <span>{completionStatus.gradeDivision ? '✓' : '✗'}</span>
+                                        <span>الصف الدراسي والقسم</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -144,6 +156,10 @@ export default async function CourseIdPage({
                             courseId={course.id}
                         />
                         <PriceForm
+                            initialData={course}
+                            courseId={course.id}
+                        />
+                        <CourseGradeDivisionForm
                             initialData={course}
                             courseId={course.id}
                         />

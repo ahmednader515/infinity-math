@@ -28,6 +28,27 @@ export async function GET(
             return new NextResponse("Course access required", { status: 403 });
         }
 
+        // Get the quiz to get maxAttempts
+        const quiz = await db.quiz.findUnique({
+            where: {
+                id: resolvedParams.quizId
+            },
+            select: {
+                maxAttempts: true
+            }
+        });
+
+        // Get all quiz results to determine total attempts
+        const allResults = await db.quizResult.findMany({
+            where: {
+                studentId: userId,
+                quizId: resolvedParams.quizId
+            },
+            orderBy: {
+                attemptNumber: 'desc'
+            }
+        });
+
         // Get the latest quiz result for this user (most recent attempt)
         const quizResult = await db.quizResult.findFirst({
             where: {
@@ -62,7 +83,14 @@ export async function GET(
             return new NextResponse("Quiz result not found", { status: 404 });
         }
 
-        return NextResponse.json(quizResult);
+        // Add maxAttempts and attempt info to the result
+        const resultWithAttemptInfo = {
+            ...quizResult,
+            maxAttempts: quiz?.maxAttempts || 1,
+            totalAttempts: allResults.length
+        };
+
+        return NextResponse.json(resultWithAttemptInfo);
     } catch (error) {
         console.log("[QUIZ_RESULT_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

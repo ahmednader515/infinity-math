@@ -41,6 +41,8 @@ model Course {
   imageUrl String? @db.Text
   price Float?
   isPublished Boolean @default(false)
+  grade String? // الصف الدراسي: الأول الثانوي، الثاني الثانوي، الثالث الثانوي، الكل (لجميع الصفوف)
+  divisions String[] @default([]) // القسم: يمكن اختيار أكثر من قسم (عام، أدبي، علمي، علمي رياضة، بكالوريا)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -51,6 +53,8 @@ model Course {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([grade])
 }
 
 model Attachment {
@@ -234,4 +238,24 @@ model QuizAnswer {
 
     @@index([questionId])
     @@index([quizResultId])
+}
+
+model PromoCode {
+    id String @id @default(uuid())
+    code String @unique // رمز الكوبون
+    discountType String // "PERCENTAGE" or "FIXED"
+    discountValue Float // قيمة الخصم (نسبة أو مبلغ ثابت)
+    minPurchase Float? // الحد الأدنى للشراء (اختياري)
+    maxDiscount Float? // الحد الأقصى للخصم (للمناسب) (اختياري)
+    usageLimit Int? // الحد الأقصى لعدد مرات الاستخدام (اختياري)
+    usedCount Int @default(0) // عدد مرات الاستخدام الحالية
+    isActive Boolean @default(true) // هل الكوبون نشط
+    validFrom DateTime? // تاريخ بداية الصلاحية (اختياري)
+    validUntil DateTime? // تاريخ انتهاء الصلاحية (اختياري)
+    description String? @db.Text // وصف الكوبون (اختياري)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([code])
+    @@index([isActive])
 }

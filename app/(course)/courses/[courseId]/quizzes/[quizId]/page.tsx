@@ -249,6 +249,11 @@ export default function QuizPage({
                                     <span className="font-medium">{formatTime(timeLeft)}</span>
                                 </div>
                             )}
+                            {quiz.maxAttempts && quiz.maxAttempts > 0 && (
+                                <Badge variant="outline" className="gap-1">
+                                    المحاولة {quiz.currentAttempt || (quiz.previousAttempts !== undefined ? quiz.previousAttempts + 1 : 1)} من {quiz.maxAttempts}
+                                </Badge>
+                            )}
                             <Badge variant="secondary">
                                 السؤال {currentQuestion + 1} من {quiz.questions.length}
                             </Badge>
@@ -262,11 +267,20 @@ export default function QuizPage({
                             <CardDescription>{quiz.description}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                    className="bg-[#0083d3] h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${progress}%` }}
-                                ></div>
+                            <div className="space-y-3">
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-[#0083d3] h-2 rounded-full transition-all duration-300"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                </div>
+                                {quiz.maxAttempts && quiz.maxAttempts > 0 && (
+                                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                        <span>
+                                            المحاولة: {quiz.currentAttempt || (quiz.previousAttempts !== undefined ? quiz.previousAttempts + 1 : 1)} / {quiz.maxAttempts}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Compass, Layout, List, Wallet, Shield, Users, Eye, TrendingUp, BookOpen, FileText, Award, PlusSquare, Key } from "lucide-react";
+import { BarChart, Compass, Layout, List, Wallet, Shield, Users, Eye, TrendingUp, BookOpen, FileText, Award, PlusSquare, Key, Ticket } from "lucide-react";
 import { SidebarItem } from "./sidebar-item";
 import { usePathname } from "next/navigation";
 
@@ -73,6 +73,11 @@ const teacherRoutes = [
         label: "إنشاء حساب طالب",
         href: "/dashboard/teacher/create-account",
     },
+    {
+        icon: Ticket,
+        label: "كوبونات الخصم",
+        href: "/dashboard/teacher/promocodes",
+    },
 ];
 
 const adminRoutes = [
@@ -90,6 +95,11 @@ const adminRoutes = [
         icon: FileText,
         label: "الاختبارات",
         href: "/dashboard/admin/quizzes",
+    },
+    {
+        icon: Award,
+        label: "الدرجات",
+        href: "/dashboard/admin/grades",
     },
     {
         icon: Shield,
@@ -115,6 +125,11 @@ const adminRoutes = [
         icon: BookOpen,
         label: "اضافة و حذف الكورسات",
         href: "/dashboard/admin/add-courses",
+    },
+    {
+        icon: Ticket,
+        label: "كوبونات الخصم",
+        href: "/dashboard/admin/promocodes",
     },
 ];
 

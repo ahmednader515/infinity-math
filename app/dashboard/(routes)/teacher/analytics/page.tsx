@@ -107,10 +107,19 @@ const AnalyticsPage = () => {
     const fetchAnalytics = async () => {
       try {
         setIsLoading(true);
+        console.log('[ANALYTICS_PAGE] Fetching analytics...');
         const response = await axios.get('/api/teacher/analytics');
+        console.log('[ANALYTICS_PAGE] Analytics data received:', response.data);
         setAnalytics(response.data);
       } catch (error) {
-        console.error('Error fetching analytics:', error);
+        console.error('[ANALYTICS_PAGE] Error fetching analytics:', error);
+        if (axios.isAxiosError(error)) {
+          console.error('[ANALYTICS_PAGE] Error details:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+          });
+        }
       } finally {
         setIsLoading(false);
       }

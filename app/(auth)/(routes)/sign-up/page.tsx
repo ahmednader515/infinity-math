@@ -43,11 +43,43 @@ export default function SignUpPage() {
     }));
   };
 
+  // Get division options based on selected grade
+  const getDivisionOptions = () => {
+    switch (formData.grade) {
+      case "الأول الثانوي":
+        return [
+          { value: "بكالوريا", label: "بكالوريا" },
+          { value: "عام", label: "عام" },
+        ];
+      case "الثاني الثانوي":
+        return [
+          { value: "علمي", label: "علمي" },
+          { value: "أدبي", label: "أدبي" },
+        ];
+      case "الثالث الثانوي":
+        return [
+          { value: "علمي رياضة", label: "علمي رياضة" },
+          { value: "أدبي", label: "أدبي" },
+        ];
+      default:
+        return [];
+    }
+  };
+
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "grade") {
+      // Reset division when grade changes
+      setFormData((prev) => ({
+        ...prev,
+        grade: value,
+        division: "", // Reset division when grade changes
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const validatePasswords = () => {
@@ -211,24 +243,28 @@ export default function SignUpPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="division">القسم</Label>
-              <Select
-                value={formData.division}
-                onValueChange={(value) => handleSelectChange("division", value)}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="اختر القسم" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="عام">عام</SelectItem>
-                  <SelectItem value="أدبي">أدبي</SelectItem>
-                  <SelectItem value="علمي">علمي</SelectItem>
-                  <SelectItem value="علمي رياضة">علمي رياضة</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Only show division field when a grade is selected */}
+            {formData.grade && (
+              <div className="space-y-2">
+                <Label htmlFor="division">القسم</Label>
+                <Select
+                  value={formData.division}
+                  onValueChange={(value) => handleSelectChange("division", value)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="اختر القسم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getDivisionOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="studyType">نوع الدراسة</Label>
