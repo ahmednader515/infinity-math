@@ -10,6 +10,7 @@
     "prisma:seed": "ts-node prisma/seed.ts",
     "fix:quiz-options": "node scripts/fix-quiz-options.js",
     "test:quiz-options": "node scripts/test-quiz-options.js",
+    "backup:db": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
     "postinstall": "prisma generate"
   },
   "dependencies": {
