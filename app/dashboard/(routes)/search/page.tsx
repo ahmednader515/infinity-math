@@ -118,6 +118,14 @@ export default async function SearchPage({
                     id: true,
                 }
             },
+            quizzes: {
+                where: {
+                    isPublished: true,
+                },
+                select: {
+                    id: true,
+                }
+            },
             purchases: {
                 where: {
                     userId: session.user.id,
@@ -148,6 +156,9 @@ export default async function SearchPage({
     const coursesWithProgress = await Promise.all(
         courses.map(async (course) => {
             const totalChapters = course.chapters.length;
+            const totalQuizzes = course.quizzes.length;
+            const totalContent = totalChapters + totalQuizzes;
+
             const completedChapters = await db.userProgress.count({
                 where: {
                     userId: session.user.id,
@@ -158,8 +169,27 @@ export default async function SearchPage({
                 }
             });
 
-            const progress = totalChapters > 0 
-                ? (completedChapters / totalChapters) * 100 
+            // Get unique completed quizzes
+            const completedQuizResults = await db.quizResult.findMany({
+                where: {
+                    studentId: session.user.id,
+                    quizId: {
+                        in: course.quizzes.map(quiz => quiz.id)
+                    }
+                },
+                select: {
+                    quizId: true
+                }
+            });
+
+            // Count unique quizIds
+            const uniqueQuizIds = new Set(completedQuizResults.map(result => result.quizId));
+            const completedQuizzes = uniqueQuizIds.size;
+
+            const completedContent = completedChapters + completedQuizzes;
+
+            const progress = totalContent > 0 
+                ? (completedContent / totalContent) * 100 
                 : 0;
 
             return {
@@ -289,15 +319,27 @@ export default async function SearchPage({
                                     </div>
                                 </div>
                                 
-                                <Button 
-                                    className="w-full bg-[#0083d3] hover:bg-[#0083d3]/90 text-white font-semibold py-3 text-base transition-all duration-200 hover:scale-105" 
-                                    variant="default"
-                                    asChild
-                                >
-                                    <Link href={course.chapters.length > 0 ? `/courses/${course.id}/chapters/${course.chapters[0].id}` : `/courses/${course.id}`}>
-                                        {course.purchases.length > 0 ? "متابعة التعلم" : "عرض الكورس"}
-                                    </Link>
-                                </Button>
+                                {course.purchases.length > 0 ? (
+                                    <Button 
+                                        className="w-full bg-[#0083d3] hover:bg-[#0083d3]/90 text-white font-semibold py-3 text-base transition-all duration-200 hover:scale-105" 
+                                        variant="default"
+                                        asChild
+                                    >
+                                        <Link href={course.chapters.length > 0 ? `/courses/${course.id}/chapters/${course.chapters[0].id}` : `/courses/${course.id}`}>
+                                            متابعة التعلم
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        className="w-full bg-[#0083d3] hover:bg-[#0083d3]/90 text-white font-semibold py-3 text-base transition-all duration-200 hover:scale-105" 
+                                        variant="default"
+                                        asChild
+                                    >
+                                        <Link href={`/courses/${course.id}/preview`}>
+                                            {course.price === 0 ? "الحصول على الكورس" : "شراء الكورس"}
+                                        </Link>
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ))}

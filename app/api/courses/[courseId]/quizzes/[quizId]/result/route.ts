@@ -66,7 +66,9 @@ export async function GET(
                                 text: true,
                                 type: true,
                                 points: true,
-                                position: true
+                                position: true,
+                                imageUrl: true,
+                                options: true
                             }
                         }
                     },

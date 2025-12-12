@@ -34,17 +34,23 @@ export async function GET(
       return new NextResponse("Not found", { status: 404 });
     }
 
-    // Free courses are always accessible
-    if (course.price === 0) {
-      return NextResponse.json({ hasAccess: true });
-    }
-
     // Check if user has any purchase with ACTIVE status
     const validPurchase = course.purchases.some(purchase => 
       purchase.status === "ACTIVE"
     );
 
-    return NextResponse.json({ hasAccess: validPurchase });
+    // Free courses are always accessible, but we still want to know if they have a purchase record
+    if (course.price === 0) {
+      return NextResponse.json({ 
+        hasAccess: true,
+        hasPurchase: validPurchase
+      });
+    }
+
+    return NextResponse.json({ 
+      hasAccess: validPurchase,
+      hasPurchase: validPurchase
+    });
   } catch (error) {
     console.error("[COURSE_ACCESS]", error);
     if (error instanceof Error) {

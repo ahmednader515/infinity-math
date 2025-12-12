@@ -379,8 +379,8 @@ export default function HomePage() {
                         variant="default"
                         asChild
                       >
-                        <Link href={course.chapters && course.chapters.length > 0 ? `/courses/${course.id}/chapters/${course.chapters[0].id}` : `/courses/${course.id}`}>
-                          {course.progress === 100 ? "عرض الكورس" : "عرض الكورس"}
+                        <Link href={`/courses/${course.id}/preview`}>
+                          عرض الكورس
                         </Link>
                       </Button>
                     </div>

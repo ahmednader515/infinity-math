@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, CheckCircle, XCircle, Award, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { parseQuizOptions } from "@/lib/utils";
 
 interface QuizAnswer {
     questionId: string;
@@ -19,6 +20,8 @@ interface QuizAnswer {
         text: string;
         type: string;
         points: number;
+        imageUrl?: string | null;
+        options?: string | null;
     };
 }
 
@@ -182,6 +185,59 @@ export default function QuizResultPage({
         return answer;
     };
 
+    const renderQuestionChoices = (answer: QuizAnswer) => {
+        if (answer.question.type === "MULTIPLE_CHOICE" && answer.question.options) {
+            const options = parseQuizOptions(answer.question.options);
+            if (options.length === 0) return null;
+            
+            return (
+                <div className="space-y-2 mt-3">
+                    <h5 className="font-medium text-sm">الخيارات:</h5>
+                    <div className="space-y-1">
+                        {options.map((option: string, optionIndex: number) => {
+                            const isStudentAnswer = option === answer.studentAnswer;
+                            const isCorrectAnswer = option === answer.correctAnswer;
+                            
+                            return (
+                                <div
+                                    key={optionIndex}
+                                    className={`p-2 rounded border ${
+                                        isStudentAnswer
+                                            ? answer.isCorrect
+                                                ? "bg-green-50 border-green-200"
+                                                : "bg-red-50 border-red-200"
+                                            : isCorrectAnswer
+                                            ? "bg-green-50 border-green-200"
+                                            : "bg-gray-50"
+                                    }`}
+                                >
+                                    <span className="text-sm flex items-center justify-between">
+                                        <span>
+                                            {optionIndex + 1}. {option}
+                                        </span>
+                                        <div className="flex gap-2">
+                                            {isStudentAnswer && (
+                                                <Badge variant={answer.isCorrect ? "default" : "destructive"} className="text-xs">
+                                                    إجابتك
+                                                </Badge>
+                                            )}
+                                            {isCorrectAnswer && !isStudentAnswer && (
+                                                <Badge variant="default" className="text-xs bg-green-600">
+                                                    الإجابة الصحيحة
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -294,23 +350,35 @@ export default function QuizResultPage({
                                             </div>
                                         </div>
                                         <p className="text-sm text-muted-foreground mb-2">{answer.question.text}</p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <span className="font-medium">إجابتك:</span>
-                                                <p className="text-muted-foreground">
-                                                    {answer.studentAnswer 
-                                                        ? formatAnswer(answer.studentAnswer, answer.question.type)
-                                                        : "لم تجب"
-                                                    }
-                                                </p>
+                                        {answer.question.imageUrl && (
+                                            <div className="mb-4">
+                                                <img 
+                                                    src={answer.question.imageUrl} 
+                                                    alt={`Question ${index + 1} image`}
+                                                    className="max-w-full h-auto rounded-lg border"
+                                                />
                                             </div>
-                                            <div>
-                                                <span className="font-medium">الإجابة الصحيحة:</span>
-                                                <p className="text-green-600">
-                                                    {formatAnswer(answer.correctAnswer, answer.question.type)}
-                                                </p>
+                                        )}
+                                        {renderQuestionChoices(answer)}
+                                        {answer.question.type !== "MULTIPLE_CHOICE" && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4">
+                                                <div>
+                                                    <span className="font-medium">إجابتك:</span>
+                                                    <p className="text-muted-foreground">
+                                                        {answer.studentAnswer 
+                                                            ? formatAnswer(answer.studentAnswer, answer.question.type)
+                                                            : "لم تجب"
+                                                        }
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium">الإجابة الصحيحة:</span>
+                                                    <p className="text-green-600">
+                                                        {formatAnswer(answer.correctAnswer, answer.question.type)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                         <div className="mt-2 text-sm">
                                             <span className="font-medium">الدرجات:</span>
                                             <span className="text-muted-foreground">

@@ -146,8 +146,10 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
       <div className="flex flex-col w-full">
         {courseContent.map((content) => {
           const isSelected = selectedContentId === content.id;
+          // Only show completion status if userProgress/quizResults exist (meaning user has access)
+          // The content API now only returns progress data for users who have purchased
           const isCompleted = content.type === 'chapter' 
-            ? content.userProgress?.[0]?.isCompleted || false
+            ? content.userProgress && content.userProgress.length > 0 && content.userProgress[0]?.isCompleted
             : content.quizResults && content.quizResults.length > 0;
           
           return (

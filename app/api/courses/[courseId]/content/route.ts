@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -7,6 +8,31 @@ export async function GET(
 ) {
     try {
         const resolvedParams = await params;
+        const { userId } = await auth();
+
+        // Check if user has purchased the course
+        let hasAccess = false;
+        if (userId) {
+            const course = await db.course.findUnique({
+                where: {
+                    id: resolvedParams.courseId,
+                    isPublished: true,
+                },
+                include: {
+                    purchases: {
+                        where: {
+                            userId,
+                            status: "ACTIVE"
+                        }
+                    }
+                }
+            });
+
+            // Free courses are always accessible, but we still check purchase
+            if (course) {
+                hasAccess = course.price === 0 || course.purchases.length > 0;
+            }
+        }
 
         // Get chapters
         const chapters = await db.chapter.findMany({
@@ -14,13 +40,16 @@ export async function GET(
                 courseId: resolvedParams.courseId,
                 isPublished: true
             },
-            include: {
+            include: hasAccess && userId ? {
                 userProgress: {
+                    where: {
+                        userId
+                    },
                     select: {
                         isCompleted: true
                     }
                 }
-            },
+            } : undefined,
             orderBy: {
                 position: "asc"
             }
@@ -32,8 +61,11 @@ export async function GET(
                 courseId: resolvedParams.courseId,
                 isPublished: true
             },
-            include: {
+            include: hasAccess && userId ? {
                 quizResults: {
+                    where: {
+                        studentId: userId
+                    },
                     select: {
                         id: true,
                         score: true,
@@ -41,7 +73,7 @@ export async function GET(
                         percentage: true
                     }
                 }
-            },
+            } : undefined,
             orderBy: {
                 position: "asc"
             }
@@ -51,11 +83,15 @@ export async function GET(
         const allContent = [
             ...chapters.map(chapter => ({
                 ...chapter,
-                type: 'chapter' as const
+                type: 'chapter' as const,
+                // Only include userProgress if user has access
+                userProgress: hasAccess ? chapter.userProgress : undefined
             })),
             ...quizzes.map(quiz => ({
                 ...quiz,
-                type: 'quiz' as const
+                type: 'quiz' as const,
+                // Only include quizResults if user has access
+                quizResults: hasAccess ? quiz.quizResults : undefined
             }))
         ].sort((a, b) => a.position - b.position);
 
