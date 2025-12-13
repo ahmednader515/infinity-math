@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, FileQuestion, CheckCircle, Circle, ShoppingCart, Download } from "lucide-react";
+import { ArrowLeft, BookOpen, FileQuestion, CheckCircle, Circle, ShoppingCart, Download, Ticket, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
 
 interface Course {
     id: string;
@@ -40,6 +41,15 @@ export default function CoursePreviewPage({
     const [hasAccess, setHasAccess] = useState(false);
     const [isCheckingAccess, setIsCheckingAccess] = useState(true);
     const [hasPurchase, setHasPurchase] = useState(false);
+    const [promocode, setPromocode] = useState("");
+    const [isValidatingPromocode, setIsValidatingPromocode] = useState(false);
+    const [promocodeValidation, setPromocodeValidation] = useState<{
+        valid: boolean;
+        discountAmount: string;
+        finalPrice: string;
+        originalPrice: string;
+        error?: string;
+    } | null>(null);
 
     useEffect(() => {
         fetchCourse();
@@ -94,6 +104,55 @@ export default function CoursePreviewPage({
         }
     };
 
+    const handleValidatePromocode = async () => {
+        if (!promocode.trim() || !course) return;
+
+        setIsValidatingPromocode(true);
+        try {
+            const response = await fetch("/api/promocodes/validate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    code: promocode.trim(),
+                    coursePrice: course.price || 0,
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setPromocodeValidation({
+                    valid: true,
+                    discountAmount: data.discountAmount,
+                    finalPrice: data.finalPrice,
+                    originalPrice: data.originalPrice,
+                });
+                toast.success("تم تطبيق كوبون الخصم بنجاح!");
+            } else {
+                const errorData = await response.json();
+                setPromocodeValidation({
+                    valid: false,
+                    discountAmount: "0.00",
+                    finalPrice: (course.price || 0).toFixed(2),
+                    originalPrice: (course.price || 0).toFixed(2),
+                    error: errorData.error || "رمز الكوبون غير صحيح",
+                });
+                toast.error(errorData.error || "رمز الكوبون غير صحيح");
+            }
+        } catch (error) {
+            console.error("Error validating promocode:", error);
+            toast.error("حدث خطأ أثناء التحقق من الكوبون");
+        } finally {
+            setIsValidatingPromocode(false);
+        }
+    };
+
+    const handleRemovePromocode = () => {
+        setPromocode("");
+        setPromocodeValidation(null);
+    };
+
     const handlePurchase = async () => {
         if (!course) return;
 
@@ -104,7 +163,9 @@ export default function CoursePreviewPage({
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({}),
+                body: JSON.stringify({
+                    promocode: promocodeValidation?.valid ? promocode.trim() : null,
+                }),
             });
 
             if (response.ok) {
@@ -189,15 +250,36 @@ export default function CoursePreviewPage({
                                             {course.description}
                                         </CardDescription>
                                     )}
-                                    <div className="flex items-center gap-2 mt-4">
+                                    <div className="flex flex-col gap-2 mt-4">
                                         {isFree ? (
-                                            <Badge variant="default" className="bg-green-600">
+                                            <Badge variant="default" className="bg-green-600 w-fit">
                                                 مجاني
                                             </Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-lg">
-                                                {course.price} جنيه
-                                            </Badge>
+                                            <div className="flex flex-col gap-1">
+                                                {promocodeValidation?.valid && (
+                                                    <div className="flex items-center gap-2 text-muted-foreground line-through text-sm">
+                                                        <span>السعر الأصلي:</span>
+                                                        <span>{promocodeValidation.originalPrice} جنيه</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    {promocodeValidation?.valid && (
+                                                        <div className="flex items-center gap-1 text-green-600 text-sm">
+                                                            <CheckCircle className="h-4 w-4" />
+                                                            <span className="font-medium">
+                                                                خصم {promocodeValidation.discountAmount} جنيه
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <Badge variant="outline" className="text-lg">
+                                                        {promocodeValidation?.valid 
+                                                            ? `${parseFloat(promocodeValidation.finalPrice).toFixed(2)} جنيه`
+                                                            : `${course.price} جنيه`
+                                                        }
+                                                    </Badge>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -257,6 +339,69 @@ export default function CoursePreviewPage({
                         </CardContent>
                     </Card>
 
+                    {/* Promocode Section - Only show for paid courses */}
+                    {!hasAccess && !isFree && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Ticket className="h-5 w-5" />
+                                    كوبون الخصم
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {!promocodeValidation?.valid ? (
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={promocode}
+                                                onChange={(e) => setPromocode(e.target.value.toUpperCase())}
+                                                placeholder="أدخل رمز الكوبون"
+                                                className="flex-1"
+                                                onKeyPress={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        handleValidatePromocode();
+                                                    }
+                                                }}
+                                            />
+                                            <Button
+                                                onClick={handleValidatePromocode}
+                                                disabled={!promocode.trim() || isValidatingPromocode}
+                                                variant="outline"
+                                            >
+                                                {isValidatingPromocode ? "جارٍ..." : "تطبيق"}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                                <span className="font-medium text-green-800">
+                                                    {promocode}
+                                                </span>
+                                                <span className="text-sm text-green-600">
+                                                    - {promocodeValidation.discountAmount} جنيه
+                                                </span>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={handleRemovePromocode}
+                                                className="h-8 w-8"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {promocodeValidation?.error && (
+                                        <p className="text-sm text-red-600">
+                                            {promocodeValidation.error}
+                                        </p>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Purchase/Get Button */}
                     {!hasAccess && (
                         <div className="sticky bottom-0 bg-background border-t p-4 rounded-t-lg shadow-lg">
@@ -296,7 +441,9 @@ export default function CoursePreviewPage({
                                                 headers: {
                                                     "Content-Type": "application/json",
                                                 },
-                                                body: JSON.stringify({}),
+                                                body: JSON.stringify({
+                                                    promocode: promocodeValidation?.valid ? promocode.trim() : null,
+                                                }),
                                             });
 
                                             if (response.ok) {
