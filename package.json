@@ -11,6 +11,7 @@
     "fix:quiz-options": "node scripts/fix-quiz-options.js",
     "test:quiz-options": "node scripts/test-quiz-options.js",
     "backup:db": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
+    "delete:users-by-date": "ts-node --project scripts/tsconfig.json scripts/delete-users-by-date.ts",
     "postinstall": "prisma generate --no-engine"
   },
   "dependencies": {
