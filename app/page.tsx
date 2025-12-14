@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Navbar } from "@/components/navbar";
 import { ScrollProgress } from "@/components/scroll-progress";
 import { useEffect, useState } from "react";
+import { RecaptchaGate } from "@/components/recaptcha-gate";
 
 // Define types based on Prisma schema
 type Course = {
@@ -93,9 +94,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="h-full w-full bg-background">
-      <Navbar />
-      <ScrollProgress />
+    <RecaptchaGate>
+      <div className="h-full w-full bg-background">
+        <Navbar />
+        <ScrollProgress />
       {/* Hero Section */}
       <section id="hero-section" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 md:pt-0 bg-gradient-to-t from-[#0083d3]/25 via-[#0083d3]/10 to-transparent">
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8 items-center">
@@ -553,6 +555,7 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
-    </div>
+      </div>
+    </RecaptchaGate>
   );
 } 
