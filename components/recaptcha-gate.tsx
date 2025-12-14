@@ -122,11 +122,28 @@ export function RecaptchaGate({ children, onVerified }: RecaptchaGateProps) {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          /* Ensure reCAPTCHA iframes can receive pointer events */
+          iframe[src*="recaptcha"] {
+            pointer-events: auto !important;
+            z-index: 10002 !important;
+          }
+          .grecaptcha-badge {
+            z-index: 10001 !important;
+          }
+        `
+      }} />
+      
       {/* Block the page content */}
-      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
+      <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm pointer-events-auto" />
       
       <Dialog open={true} modal={true}>
-        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogContent 
+          className="sm:max-w-md z-[101] pointer-events-auto" 
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
@@ -140,12 +157,14 @@ export function RecaptchaGate({ children, onVerified }: RecaptchaGateProps) {
           <div className="py-4">
             {siteKey ? (
               <div className="flex flex-col items-center gap-4">
-                <ReCAPTCHA
-                  ref={recaptchaRef}
-                  sitekey={siteKey}
-                  onChange={handleRecaptchaChange}
-                  theme="light"
-                />
+                <div className="pointer-events-auto relative" style={{ zIndex: 10002 }}>
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey={siteKey}
+                    onChange={handleRecaptchaChange}
+                    theme="light"
+                  />
+                </div>
                 <Button
                   onClick={handleVerify}
                   disabled={!recaptchaToken || isVerifying}
