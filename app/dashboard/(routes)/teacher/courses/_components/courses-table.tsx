@@ -114,7 +114,7 @@ export function CoursesTable<TData extends { id: string }, TValue>({
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
                                     return (
-                                        <TableHead key={header.id}>
+                                        <TableHead key={header.id} className="text-right">
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -135,7 +135,7 @@ export function CoursesTable<TData extends { id: string }, TValue>({
                                     data-state={row.getIsSelected() && "selected"}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell key={cell.id} className="text-right">
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext()
@@ -143,8 +143,8 @@ export function CoursesTable<TData extends { id: string }, TValue>({
                                         </TableCell>
                                     ))}
                                     {!hideActions && (
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center gap-2 justify-end">
                                                 <Link href={`/dashboard/teacher/courses/${row.original.id}`}>
                                                     <Button variant="ghost" size="icon" title="تعديل الكورس">
                                                         <Pencil className="h-4 w-4" />

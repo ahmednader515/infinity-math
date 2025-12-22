@@ -26,12 +26,30 @@ export async function GET(req: NextRequest) {
         }
 
         const promocodes = await db.promoCode.findMany({
+            include: {
+                courses: {
+                    include: {
+                        course: {
+                            select: {
+                                id: true,
+                                title: true,
+                            },
+                        },
+                    },
+                },
+            },
             orderBy: {
                 createdAt: "desc",
             },
         });
 
-        return NextResponse.json(promocodes);
+        // Transform the response to include courseIds array
+        const transformedPromocodes = promocodes.map((promo: any) => ({
+            ...promo,
+            courseIds: promo.courses.map((pc: any) => pc.courseId),
+        }));
+
+        return NextResponse.json(transformedPromocodes);
     } catch (error) {
         console.error("[PROMOCODES_GET] Error details:", error);
         if (error instanceof Error) {
@@ -72,6 +90,7 @@ export async function POST(req: NextRequest) {
             validFrom,
             validUntil,
             description,
+            courseIds, // Array of course IDs (empty array means all courses)
         } = body;
 
         // Validate required fields
@@ -119,7 +138,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Create promocode
+        // Create promocode with course associations
         const promocode = await db.promoCode.create({
             data: {
                 code: code.toUpperCase().trim(),
@@ -132,10 +151,33 @@ export async function POST(req: NextRequest) {
                 validFrom: validFrom ? new Date(validFrom) : null,
                 validUntil: validUntil ? new Date(validUntil) : null,
                 description: description || null,
+                courses: courseIds && courseIds.length > 0 ? {
+                    create: courseIds.map((courseId: string) => ({
+                        courseId,
+                    })),
+                } : undefined,
+            },
+            include: {
+                courses: {
+                    include: {
+                        course: {
+                            select: {
+                                id: true,
+                                title: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
-        return NextResponse.json(promocode);
+        // Transform the response
+        const transformedPromocode = {
+            ...promocode,
+            courseIds: promocode.courses.map(pc => pc.courseId),
+        };
+
+        return NextResponse.json(transformedPromocode);
     } catch (error) {
         console.error("[PROMOCODES_POST]", error);
         if (error instanceof Error) {

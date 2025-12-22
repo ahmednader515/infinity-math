@@ -211,7 +211,7 @@ export const EditGradeDivisionDialog = ({ course }: EditGradeDivisionDialogProps
                                                 <SelectValue placeholder="اختر الصف" />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent>
+                                        <SelectContent className="z-[200]">
                                             <SelectItem value="الكل">الكل (جميع الصفوف)</SelectItem>
                                             <SelectItem value="الأول الثانوي">الأول الثانوي</SelectItem>
                                             <SelectItem value="الثاني الثانوي">الثاني الثانوي</SelectItem>

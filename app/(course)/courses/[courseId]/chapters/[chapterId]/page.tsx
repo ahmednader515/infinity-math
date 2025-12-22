@@ -162,7 +162,14 @@ const ChapterPage = () => {
         console.error("🔍 Error fetching data:", axiosError);
         if (axiosError.response) {
           console.error("🔍 Error response:", axiosError.response.data);
-          toast.error(`فشل تحميل الفصل: ${axiosError.response.data}`);
+          const errorData = axiosError.response.data as { error?: string; isLocked?: boolean };
+          if (axiosError.response.status === 403 && errorData.isLocked) {
+            // Chapter is locked, redirect to course page or show message
+            toast.error(errorData.error || "هذا الفصل مقفل");
+            router.push(`/courses/${routeParams.courseId}`);
+          } else {
+            toast.error(`فشل تحميل الفصل: ${errorData.error || axiosError.response.data}`);
+          }
         } else if (axiosError.request) {
           console.error("🔍 Error request:", axiosError.request);
           toast.error("فشل الاتصال بالخادم");

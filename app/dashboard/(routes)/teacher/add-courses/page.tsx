@@ -296,7 +296,7 @@ const TeacherAddCoursesPage = () => {
                                 <SelectTrigger>
                                     <SelectValue placeholder="اختر كورس..." />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="z-[200] max-h-[300px] overflow-y-auto">
                                     {(dialogMode === "delete" ? ownedCourses : courses).map((course) => (
                                         <SelectItem key={course.id} value={course.id}>
                                             <div className="flex items-center justify-between w-full">

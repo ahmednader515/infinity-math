@@ -10,6 +10,38 @@ import { ScrollProgress } from "@/components/scroll-progress";
 import { useEffect, useState } from "react";
 import { RecaptchaGate } from "@/components/recaptcha-gate";
 
+const WhatsAppButton = () => {
+  const phoneNumber = "01040626158";
+  const whatsappUrl = `https://wa.me/${phoneNumber}`;
+
+  return (
+    <motion.a
+      href={whatsappUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-16 h-16 bg-[#25D366] rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 260, 
+        damping: 20,
+        delay: 0.5 
+      }}
+    >
+      <Image
+        src="/whatsapp.png"
+        alt="واتساب"
+        width={40}
+        height={40}
+        className="object-contain"
+      />
+    </motion.a>
+  );
+};
+
 // Define types based on Prisma schema
 type Course = {
   id: string;
@@ -98,6 +130,7 @@ export default function HomePage() {
       <div className="h-full w-full bg-background">
         <Navbar />
         <ScrollProgress />
+        <WhatsAppButton />
       {/* Hero Section */}
       <section id="hero-section" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 md:pt-0 bg-gradient-to-t from-[#0083d3]/25 via-[#0083d3]/10 to-transparent">
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8 items-center">

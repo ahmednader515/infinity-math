@@ -31,6 +31,7 @@ model User {
   balanceTransactions     BalanceTransaction[]
   quizResults             QuizResult[]
   quizAttempts            QuizAttempt[]
+  quizStudentSettings     QuizStudentSettings[]
 }
 
 model Course {
@@ -43,6 +44,7 @@ model Course {
   isPublished Boolean @default(false)
   grade String? // الصف الدراسي: الأول الثانوي، الثاني الثانوي، الثالث الثانوي، الكل (لجميع الصفوف)
   divisions String[] @default([]) // القسم: يمكن اختيار أكثر من قسم (عام، أدبي، علمي، علمي رياضة، بكالوريا)
+  studyTypes String[] @default([]) // نوع الدراسة: ["سنتر"], ["أون لاين"], أو ["سنتر", "أون لاين"]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -50,6 +52,7 @@ model Course {
   chapters Chapter[]
   purchases Purchase[]
   quizzes Quiz[]
+  promoCodes PromoCodeCourse[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,6 +85,10 @@ model Chapter {
   position Int
   isPublished Boolean @default(false)
   isFree Boolean @default(false)
+  studyTypes String[] @default([]) // نوع الدراسة: ["سنتر"], ["أون لاين"], أو ["سنتر", "أون لاين"]
+  requirePassingQuiz Boolean @default(false) // يجب على الطالب اجتياز الاختبار لرؤية الفصل
+  requiredQuizId String? // معرف الاختبار المطلوب اجتيازه
+  requiredQuiz Quiz? @relation("ChapterRequiredQuiz", fields: [requiredQuizId], references: [id], onDelete: SetNull)
 
   courseId String
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -93,6 +100,7 @@ model Chapter {
   updatedAt DateTime @updatedAt
 
   @@index([courseId])
+  @@index([requiredQuizId])
 }
 
 model ChapterAttachment {
@@ -159,12 +167,14 @@ model Quiz {
     position Int
     isPublished Boolean @default(false)
     timer Int? // Timer in minutes, null means no time limit
-    maxAttempts Int @default(1) // Maximum number of attempts allowed
+    maxAttempts Int @default(1) // Maximum number of attempts allowed (default, can be overridden per student)
     courseId String
     course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
     questions Question[]
     quizResults QuizResult[]
-  attempts QuizAttempt[]
+    attempts QuizAttempt[]
+    studentSettings QuizStudentSettings[] // Per-student retry limits
+    requiredByChapters Chapter[] @relation("ChapterRequiredQuiz") // Chapters that require passing this quiz
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
@@ -240,6 +250,21 @@ model QuizAnswer {
     @@index([quizResultId])
 }
 
+model QuizStudentSettings {
+    id String @id @default(uuid())
+    studentId String
+    quizId String
+    maxAttempts Int // Per-student maximum number of attempts (overrides quiz.maxAttempts)
+    user User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+    quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([studentId, quizId])
+    @@index([studentId])
+    @@index([quizId])
+}
+
 model PromoCode {
     id String @id @default(uuid())
     code String @unique // رمز الكوبون
@@ -253,9 +278,23 @@ model PromoCode {
     validFrom DateTime? // تاريخ بداية الصلاحية (اختياري)
     validUntil DateTime? // تاريخ انتهاء الصلاحية (اختياري)
     description String? @db.Text // وصف الكوبون (اختياري)
+    courses PromoCodeCourse[] // الكورسات التي ينطبق عليها الكوبون (فارغ يعني جميع الكورسات)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
     @@index([code])
     @@index([isActive])
+}
+
+model PromoCodeCourse {
+    id String @id @default(uuid())
+    promocodeId String
+    courseId String
+    promocode PromoCode @relation(fields: [promocodeId], references: [id], onDelete: Cascade)
+    course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    @@unique([promocodeId, courseId])
+    @@index([promocodeId])
+    @@index([courseId])
 }

@@ -69,6 +69,9 @@ export async function POST(
     if (promocodeInput) {
       const promocode = await db.promoCode.findUnique({
         where: { code: promocodeInput.toUpperCase().trim() },
+        include: {
+          courses: true,
+        },
       });
 
       if (promocode && promocode.isActive) {
@@ -79,8 +82,14 @@ export async function POST(
         
         const isWithinUsageLimit = !promocode.usageLimit || promocode.usedCount < promocode.usageLimit;
         const meetsMinimumPurchase = !promocode.minPurchase || coursePrice >= promocode.minPurchase;
+        
+        // Check if promocode applies to this course
+        // If promocode has courses associated, it only applies to those courses
+        // If no courses are associated, it applies to all courses
+        const appliesToCourse = promocode.courses.length === 0 || 
+          promocode.courses.some(pc => pc.courseId === resolvedParams.courseId);
 
-        if (isValidDate && isWithinUsageLimit && meetsMinimumPurchase) {
+        if (isValidDate && isWithinUsageLimit && meetsMinimumPurchase && appliesToCourse) {
           // Calculate discount
           if (promocode.discountType === "PERCENTAGE") {
             discountAmount = (coursePrice * promocode.discountValue) / 100;

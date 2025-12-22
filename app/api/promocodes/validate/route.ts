@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     try {
         const { userId } = await auth();
         const body = await req.json();
-        const { code, coursePrice } = body;
+        const { code, coursePrice, courseId } = body; // courseId is now required for validation
 
         if (!userId) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -20,9 +20,12 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Find promocode
+        // Find promocode with course associations
         const promocode = await db.promoCode.findUnique({
             where: { code: code.toUpperCase().trim() },
+            include: {
+                courses: true,
+            },
         });
 
         if (!promocode) {
@@ -62,6 +65,19 @@ export async function POST(req: NextRequest) {
                 JSON.stringify({ error: "تم استنفاذ عدد مرات استخدام هذا الكوبون" }),
                 { status: 400, headers: { "Content-Type": "application/json" } }
             );
+        }
+
+        // Check if promocode applies to this course
+        // If promocode has courses associated, it only applies to those courses
+        // If no courses are associated, it applies to all courses
+        if (promocode.courses.length > 0 && courseId) {
+            const appliesToCourse = promocode.courses.some((pc: any) => pc.courseId === courseId);
+            if (!appliesToCourse) {
+                return new NextResponse(
+                    JSON.stringify({ error: "هذا الكوبون لا ينطبق على هذا الكورس" }),
+                    { status: 400, headers: { "Content-Type": "application/json" } }
+                );
+            }
         }
 
         // Check minimum purchase

@@ -18,10 +18,11 @@ import { Pencil } from "lucide-react";
 const formSchema = z.object({
     grade: z.string().optional(),
     divisions: z.array(z.string()).optional(),
+    studyTypes: z.array(z.string()).optional(),
 });
 
 interface CourseGradeDivisionFormProps {
-    initialData: Course & { divisions?: string[] };
+    initialData: Course & { divisions?: string[]; studyTypes?: string[] };
     courseId: string;
 }
 
@@ -71,6 +72,7 @@ export const CourseGradeDivisionForm = ({
         defaultValues: {
             grade: initialData.grade || "",
             divisions: initialDivisions,
+            studyTypes: initialData.studyTypes || [],
         },
     });
 
@@ -98,6 +100,7 @@ export const CourseGradeDivisionForm = ({
             form.reset({
                 grade: initialData.grade || "",
                 divisions: divisions,
+                studyTypes: initialData.studyTypes || [],
             });
             setSelectedGrade(initialData.grade || null);
         }
@@ -109,7 +112,7 @@ export const CourseGradeDivisionForm = ({
             setIsLoading(true);
             
             // Prepare data
-            const updateData: { grade?: string | null; divisions?: string[] } = {};
+            const updateData: { grade?: string | null; divisions?: string[]; studyTypes?: string[] } = {};
             
             if (values.grade && values.grade.trim() !== "" && values.grade !== "الكل") {
                 updateData.grade = values.grade.trim();
@@ -121,6 +124,9 @@ export const CourseGradeDivisionForm = ({
                 updateData.grade = null;
                 updateData.divisions = [];
             }
+            
+            // Add studyTypes
+            updateData.studyTypes = values.studyTypes || [];
             
             const response = await axios.patch(`/api/courses/${courseId}`, updateData);
             
@@ -188,6 +194,19 @@ export const CourseGradeDivisionForm = ({
                             </span>
                         </div>
                     )}
+                    <div className="text-sm">
+                        <span className="font-medium">نوع الدراسة: </span>
+                        <span className="text-muted-foreground">
+                            {(!initialData.studyTypes || initialData.studyTypes.length === 0)
+                                ? "الكل (سنتر وأون لاين)"
+                                : initialData.studyTypes.length === 2
+                                ? "سنتر وأون لاين"
+                                : initialData.studyTypes.includes("سنتر")
+                                ? "سنتر فقط"
+                                : "أون لاين فقط"
+                            }
+                        </span>
+                    </div>
                     {initialData.grade === "الكل" && (
                         <div className="text-sm text-blue-600">
                             ℹ️ هذا الكورس متاح لجميع الصفوف
@@ -279,6 +298,58 @@ export const CourseGradeDivisionForm = ({
                                 ℹ️ عند اختيار "الكل"، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن صفوفهم وأقسامهم.
                             </div>
                         )}
+
+                        <FormField
+                            control={form.control}
+                            name="studyTypes"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>نوع الدراسة</FormLabel>
+                                    <FormDescription>
+                                        اختر نوع الدراسة الذي ينطبق على هذا الكورس. يمكنك اختيار واحد أو كليهما.
+                                    </FormDescription>
+                                    <div className="space-y-2 mt-2">
+                                        <div className="flex items-center space-x-2 space-x-reverse">
+                                            <Checkbox
+                                                id="course-center"
+                                                checked={field.value?.includes("سنتر")}
+                                                onCheckedChange={(checked) => {
+                                                    const current = field.value || [];
+                                                    if (checked) {
+                                                        field.onChange([...current, "سنتر"]);
+                                                    } else {
+                                                        field.onChange(current.filter((type: string) => type !== "سنتر"));
+                                                    }
+                                                }}
+                                                disabled={isLoading}
+                                            />
+                                            <Label htmlFor="course-center" className="cursor-pointer font-normal">
+                                                سنتر
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2 space-x-reverse">
+                                            <Checkbox
+                                                id="course-online"
+                                                checked={field.value?.includes("أون لاين")}
+                                                onCheckedChange={(checked) => {
+                                                    const current = field.value || [];
+                                                    if (checked) {
+                                                        field.onChange([...current, "أون لاين"]);
+                                                    } else {
+                                                        field.onChange(current.filter((type: string) => type !== "أون لاين"));
+                                                    }
+                                                }}
+                                                disabled={isLoading}
+                                            />
+                                            <Label htmlFor="course-online" className="cursor-pointer font-normal">
+                                                أون لاين
+                                            </Label>
+                                        </div>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         <div className="flex items-center gap-x-2">
                             <Button

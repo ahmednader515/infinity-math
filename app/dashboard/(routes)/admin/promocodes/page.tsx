@@ -9,8 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Search, Ticket } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Plus, Edit, Trash2, Search, Ticket, X, ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+interface Course {
+    id: string;
+    title: string;
+}
 
 interface PromoCode {
     id: string;
@@ -25,6 +34,7 @@ interface PromoCode {
     validFrom: string | null;
     validUntil: string | null;
     description: string | null;
+    courseIds?: string[];
     createdAt: string;
     updatedAt: string;
 }
@@ -35,6 +45,10 @@ const AdminPromoCodesPage = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPromocode, setEditingPromocode] = useState<PromoCode | null>(null);
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+    const [applyToAllCourses, setApplyToAllCourses] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     
     // Form state
     const [code, setCode] = useState("");
@@ -50,7 +64,23 @@ const AdminPromoCodesPage = () => {
 
     useEffect(() => {
         fetchPromocodes();
+        fetchCourses();
     }, []);
+
+    const fetchCourses = async () => {
+        try {
+            const response = await fetch("/api/courses");
+            if (response.ok) {
+                const data = await response.json();
+                setCourses(data.map((course: any) => ({
+                    id: course.id,
+                    title: course.title,
+                })));
+            }
+        } catch (error) {
+            console.error("Error fetching courses:", error);
+        }
+    };
 
     const fetchPromocodes = async () => {
         try {
@@ -80,6 +110,9 @@ const AdminPromoCodesPage = () => {
         setValidFrom("");
         setValidUntil("");
         setDescription("");
+        setSelectedCourseIds([]);
+        setApplyToAllCourses(true);
+        setSearchQuery("");
         setEditingPromocode(null);
     };
 
@@ -99,6 +132,9 @@ const AdminPromoCodesPage = () => {
         setValidFrom(promocode.validFrom ? promocode.validFrom.split("T")[0] : "");
         setValidUntil(promocode.validUntil ? promocode.validUntil.split("T")[0] : "");
         setDescription(promocode.description || "");
+        const courseIds = promocode.courseIds || [];
+        setSelectedCourseIds(courseIds);
+        setApplyToAllCourses(courseIds.length === 0);
         setEditingPromocode(promocode);
         setIsDialogOpen(true);
     };
@@ -126,6 +162,7 @@ const AdminPromoCodesPage = () => {
             validFrom: validFrom || null,
             validUntil: validUntil || null,
             description: description.trim() || null,
+            courseIds: applyToAllCourses ? [] : selectedCourseIds,
         };
 
         try {
@@ -412,6 +449,157 @@ const AdminPromoCodesPage = () => {
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="وصف الكوبون (اختياري)"
                             />
+                        </div>
+
+                        <div className="space-y-3 border-t pt-4">
+                            <Label>الكورسات المطبقة عليها الكوبون</Label>
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                                <Checkbox
+                                    id="applyToAll"
+                                    checked={applyToAllCourses}
+                                    onCheckedChange={(checked) => {
+                                        setApplyToAllCourses(checked as boolean);
+                                        if (checked) {
+                                            setSelectedCourseIds([]);
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="applyToAll" className="cursor-pointer font-normal">
+                                    ينطبق على جميع الكورسات
+                                </Label>
+                            </div>
+                            {!applyToAllCourses && (
+                                <div className="space-y-2 mt-3">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className="w-full justify-between h-auto min-h-10 py-2"
+                                            >
+                                                <div className="flex flex-wrap gap-1 flex-1">
+                                                    {selectedCourseIds.length === 0 ? (
+                                                        <span className="text-muted-foreground">اختر الكورسات...</span>
+                                                    ) : (
+                                                        selectedCourseIds.map((courseId) => {
+                                                            const course = courses.find(c => c.id === courseId);
+                                                            return course ? (
+                                                                <Badge
+                                                                    key={courseId}
+                                                                    variant="secondary"
+                                                                    className="mr-1 mb-1"
+                                                                >
+                                                                    {course.title}
+                                                                    <button
+                                                                        className="mr-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === "Enter") {
+                                                                                setSelectedCourseIds(selectedCourseIds.filter(id => id !== courseId));
+                                                                            }
+                                                                        }}
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            setSelectedCourseIds(selectedCourseIds.filter(id => id !== courseId));
+                                                                        }}
+                                                                    >
+                                                                        <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                                    </button>
+                                                                </Badge>
+                                                            ) : null;
+                                                        })
+                                                    )}
+                                                </div>
+                                                <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent 
+                                            className="w-[var(--radix-popover-trigger-width)] p-0 z-[102]" 
+                                            align="start"
+                                            onWheel={(e) => e.stopPropagation()}
+                                            onTouchMove={(e) => e.stopPropagation()}
+                                        >
+                                            <Command shouldFilter={false}>
+                                                <CommandInput 
+                                                    placeholder="ابحث عن كورس..." 
+                                                    value={searchQuery}
+                                                    onValueChange={setSearchQuery}
+                                                />
+                                                <CommandList 
+                                                    className="max-h-[300px] overflow-y-auto overscroll-contain"
+                                                    style={{ 
+                                                        touchAction: 'pan-y',
+                                                        WebkitOverflowScrolling: 'touch'
+                                                    }}
+                                                    onWheel={(e) => {
+                                                        e.stopPropagation();
+                                                        const target = e.currentTarget;
+                                                        if (!target) return;
+                                                        
+                                                        const scrollTop = target.scrollTop;
+                                                        const scrollHeight = target.scrollHeight;
+                                                        const clientHeight = target.clientHeight;
+                                                        const isAtTop = scrollTop <= 0;
+                                                        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+                                                        
+                                                        // Only prevent default if we're at the boundary
+                                                        if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
+                                                    onTouchStart={(e) => {
+                                                        e.stopPropagation();
+                                                    }}
+                                                    onTouchMove={(e) => {
+                                                        e.stopPropagation();
+                                                    }}
+                                                    onTouchEnd={(e) => {
+                                                        e.stopPropagation();
+                                                    }}
+                                                >
+                                                    <CommandEmpty>لا يوجد كورسات.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {courses
+                                                            .filter(course => 
+                                                                searchQuery === "" || 
+                                                                course.title.toLowerCase().includes(searchQuery.toLowerCase())
+                                                            )
+                                                            .map((course) => (
+                                                                <CommandItem
+                                                                    key={course.id}
+                                                                    value={course.title}
+                                                                    onSelect={() => {
+                                                                        if (selectedCourseIds.includes(course.id)) {
+                                                                            setSelectedCourseIds(selectedCourseIds.filter(id => id !== course.id));
+                                                                        } else {
+                                                                            setSelectedCourseIds([...selectedCourseIds, course.id]);
+                                                                        }
+                                                                    }}
+                                                                    className="cursor-pointer"
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            selectedCourseIds.includes(course.id) ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    {course.title}
+                                                                </CommandItem>
+                                                            ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    {selectedCourseIds.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            تم اختيار {selectedCourseIds.length} كورس
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex items-center space-x-2">

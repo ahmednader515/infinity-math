@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, use } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { CheckCircle, Circle } from "lucide-react";
+import { CheckCircle, Circle, Lock } from "lucide-react";
 import axios from "axios";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ interface Chapter {
   id: string;
   title: string;
   isFree: boolean;
+  isLocked?: boolean;
+  lockReason?: string | null;
   userProgress: {
     isCompleted: boolean;
   }[];
@@ -33,6 +35,8 @@ interface CourseContent {
   position: number;
   type: 'chapter' | 'quiz';
   isFree?: boolean;
+  isLocked?: boolean;
+  lockReason?: string | null;
   userProgress?: {
     isCompleted: boolean;
   }[];
@@ -100,6 +104,11 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
   }, [pathname]);
 
   const onClick = (content: CourseContent) => {
+    // Don't allow navigation to locked chapters
+    if (content.type === 'chapter' && content.isLocked) {
+      return;
+    }
+    
     const courseId = course?.id || params.courseId;
     if (courseId) {
       setSelectedContentId(content.id);
@@ -152,19 +161,31 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
             ? content.userProgress && content.userProgress.length > 0 && content.userProgress[0]?.isCompleted
             : content.quizResults && content.quizResults.length > 0;
           
+          const isLocked = content.type === 'chapter' && content.isLocked;
+          
           return (
             <div
               key={content.id}
               className={cn(
-                "flex items-center gap-x-2 text-sm font-[500] rtl:pr-4 ltr:pl-4 py-4 transition cursor-pointer",
-                isSelected 
+                "flex items-center gap-x-2 text-sm font-[500] rtl:pr-4 ltr:pl-4 py-4 transition",
+                isLocked 
+                  ? "text-slate-400 cursor-not-allowed"
+                  : "cursor-pointer",
+                !isLocked && isSelected 
                   ? "bg-slate-200 text-slate-900"
-                  : "text-slate-500 hover:bg-slate-300/20 hover:text-slate-600",
-                isCompleted && !isSelected && "text-emerald-600"
+                  : !isLocked && "text-slate-500 hover:bg-slate-300/20 hover:text-slate-600",
+                !isLocked && isCompleted && !isSelected && "text-emerald-600"
               )}
-              onClick={() => onClick(content)}
+              onClick={() => {
+                if (!isLocked) {
+                  onClick(content);
+                }
+              }}
+              title={isLocked && content.type === 'chapter' ? content.lockReason || undefined : undefined}
             >
-              {isCompleted ? (
+              {isLocked ? (
+                <Lock className="h-4 w-4 text-slate-400" />
+              ) : isCompleted ? (
                 <CheckCircle className="h-4 w-4 text-emerald-600" />
               ) : (
                 <Circle className="h-4 w-4" />

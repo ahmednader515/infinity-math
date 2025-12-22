@@ -31,13 +31,31 @@ export async function GET(
 
         const promocode = await db.promoCode.findUnique({
             where: { id: resolvedParams.promocodeId },
+            include: {
+                courses: {
+                    include: {
+                        course: {
+                            select: {
+                                id: true,
+                                title: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
 
         if (!promocode) {
             return new NextResponse("Promocode not found", { status: 404 });
         }
 
-        return NextResponse.json(promocode);
+        // Transform the response
+        const transformedPromocode = {
+            ...promocode,
+            courseIds: promocode.courses.map((pc: any) => pc.courseId),
+        };
+
+        return NextResponse.json(transformedPromocode);
     } catch (error) {
         console.error("[PROMOCODE_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
@@ -74,6 +92,7 @@ export async function PATCH(
             validFrom,
             validUntil,
             description,
+            courseIds, // Array of course IDs (empty array means all courses)
         } = body;
 
         // Check if promocode exists
@@ -128,12 +147,47 @@ export async function PATCH(
         if (validUntil !== undefined) updateData.validUntil = validUntil ? new Date(validUntil) : null;
         if (description !== undefined) updateData.description = description || null;
 
+        // Handle course associations if courseIds is provided
+        if (courseIds !== undefined) {
+            // Delete existing course associations
+            await db.promoCodeCourse.deleteMany({
+                where: { promocodeId: resolvedParams.promocodeId },
+            });
+
+            // Create new associations if courseIds array is not empty
+            if (courseIds.length > 0) {
+                updateData.courses = {
+                    create: courseIds.map((courseId: string) => ({
+                        courseId,
+                    })),
+                };
+            }
+        }
+
         const promocode = await db.promoCode.update({
             where: { id: resolvedParams.promocodeId },
             data: updateData,
+            include: {
+                courses: {
+                    include: {
+                        course: {
+                            select: {
+                                id: true,
+                                title: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
 
-        return NextResponse.json(promocode);
+        // Transform the response
+        const transformedPromocode = {
+            ...promocode,
+            courseIds: promocode.courses.map((pc: any) => pc.courseId),
+        };
+
+        return NextResponse.json(transformedPromocode);
     } catch (error) {
         console.error("[PROMOCODE_PATCH]", error);
         if (error instanceof Error) {

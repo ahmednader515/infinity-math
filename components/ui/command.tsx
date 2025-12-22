@@ -28,6 +28,7 @@ function Command({
     />
   )
 }
+Command.displayName = "Command"
 
 function CommandDialog({
   title = "Command Palette",
@@ -74,6 +75,7 @@ function CommandInput({
     </div>
   )
 }
+CommandInput.displayName = "CommandInput"
 
 function CommandList({
   className,
@@ -90,6 +92,7 @@ function CommandList({
     />
   )
 }
+CommandList.displayName = "CommandList"
 
 function CommandEmpty({
   ...props
@@ -102,6 +105,7 @@ function CommandEmpty({
     />
   )
 }
+CommandEmpty.displayName = "CommandEmpty"
 
 function CommandGroup({
   className,
@@ -118,6 +122,7 @@ function CommandGroup({
     />
   )
 }
+CommandGroup.displayName = "CommandGroup"
 
 function CommandSeparator({
   className,
@@ -147,6 +152,7 @@ function CommandItem({
     />
   )
 }
+CommandItem.displayName = "CommandItem"
 
 function CommandShortcut({
   className,

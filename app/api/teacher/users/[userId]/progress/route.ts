@@ -68,7 +68,7 @@ export async function GET(
         });
 
         // Get all chapters from purchased courses
-        const courseIds = purchases.map(purchase => purchase.course.id);
+        const courseIds = purchases.map((purchase: { course: { id: string } }) => purchase.course.id);
         const allChapters = await db.chapter.findMany({
             where: {
                 courseId: {
@@ -96,8 +96,14 @@ export async function GET(
             ]
         });
 
+        // Filter userProgress to only include progress for chapters in purchased courses
+        const chapterIds = allChapters.map((chapter: { id: string }) => chapter.id);
+        const filteredUserProgress = userProgress.filter(
+            (progress: { chapterId: string }) => chapterIds.includes(progress.chapterId)
+        );
+
         return NextResponse.json({
-            userProgress,
+            userProgress: filteredUserProgress,
             purchases,
             allChapters
         });

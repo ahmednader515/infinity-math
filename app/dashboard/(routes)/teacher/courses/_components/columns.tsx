@@ -26,9 +26,10 @@ export const columns: ColumnDef<Course>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="justify-end"
                 >
                     العنوان
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
                 </Button>
             );
         },
@@ -40,15 +41,16 @@ export const columns: ColumnDef<Course>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="justify-end"
                 >
                     السعر
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
                 </Button>
             );
         },
         cell: ({ row }) => {
             const price = parseFloat(row.getValue("price"));
-            return <div>{formatPrice(price)}</div>;
+            return <div className="text-right">{formatPrice(price)}</div>;
         },
     },
     {
@@ -58,9 +60,10 @@ export const columns: ColumnDef<Course>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="justify-end"
                 >
                     الحالة
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
                 </Button>
             );
         },
@@ -80,20 +83,21 @@ export const columns: ColumnDef<Course>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="justify-end"
                 >
                     انشئ في
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
                 </Button>
             );
         },
         cell: ({ row }) => {
             const date = new Date(row.getValue("createdAt"));
-            return <div>{format(date, "dd/MM/yyyy", { locale: ar })}</div>;
+            return <div className="text-right">{format(date, "dd/MM/yyyy", { locale: ar })}</div>;
         },
     },
     {
         id: "gradeDivision",
-        header: "الصف والقسم",
+        header: () => <div className="text-right">الصف والقسم</div>,
         cell: ({ row }) => {
             const grade = row.original.grade;
             const divisions = (row.original as any).divisions || [];

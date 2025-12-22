@@ -205,13 +205,25 @@ const CoursesPage = async () => {
       const totalQuizzes = course.quizzes.length;
       const totalContent = totalChapters + totalQuizzes;
 
+      // Get the purchase date to only count progress created after purchase
+      const purchase = course.purchases?.[0];
+      const purchaseDate = purchase?.createdAt;
+
       const completedChapters = await db.userProgress.count({
         where: {
           userId: session.user.id,
           chapterId: {
-            in: course.chapters.map(chapter => chapter.id)
+            in: course.chapters.map((chapter: { id: string }) => chapter.id)
           },
-          isCompleted: true
+          chapter: {
+            courseId: course.id
+          },
+          isCompleted: true,
+          ...(purchaseDate ? {
+            createdAt: {
+              gte: purchaseDate
+            }
+          } : {})
         }
       });
 
@@ -220,8 +232,16 @@ const CoursesPage = async () => {
         where: {
           studentId: session.user.id,
           quizId: {
-            in: course.quizzes.map(quiz => quiz.id)
-          }
+            in: course.quizzes.map((quiz: { id: string }) => quiz.id)
+          },
+          quiz: {
+            courseId: course.id
+          },
+          ...(purchaseDate ? {
+            createdAt: {
+              gte: purchaseDate
+            }
+          } : {})
         },
         select: {
           quizId: true

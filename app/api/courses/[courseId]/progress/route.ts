@@ -32,6 +32,19 @@ export async function GET(
 
     const totalContent = totalChapters + totalQuizzes;
 
+    // Get the purchase date to only count progress created after purchase
+    const purchase = await db.purchase.findFirst({
+      where: {
+        userId,
+        courseId: resolvedParams.courseId,
+        status: "ACTIVE"
+      },
+      select: {
+        createdAt: true
+      }
+    });
+    const purchaseDate = purchase?.createdAt;
+
     // Get completed chapters
     const completedChapters = await db.userProgress.count({
       where: {
@@ -39,7 +52,12 @@ export async function GET(
         chapter: {
           courseId: resolvedParams.courseId,
         },
-        isCompleted: true
+        isCompleted: true,
+        ...(purchaseDate ? {
+          createdAt: {
+            gte: purchaseDate
+          }
+        } : {})
       }
     });
 
@@ -50,7 +68,12 @@ export async function GET(
             quiz: {
                 courseId: resolvedParams.courseId,
                 isPublished: true,
-            }
+            },
+            ...(purchaseDate ? {
+                createdAt: {
+                    gte: purchaseDate
+                }
+            } : {})
         },
         select: {
             quizId: true

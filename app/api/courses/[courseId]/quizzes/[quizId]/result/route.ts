@@ -38,6 +38,19 @@ export async function GET(
             }
         });
 
+        // Check for per-student retry limit
+        const studentSettings = await db.quizStudentSettings.findUnique({
+            where: {
+                studentId_quizId: {
+                    studentId: userId,
+                    quizId: resolvedParams.quizId
+                }
+            }
+        });
+
+        // Use per-student maxAttempts if available, otherwise use global maxAttempts
+        const maxAttempts = studentSettings?.maxAttempts ?? (quiz?.maxAttempts || 1);
+
         // Get all quiz results to determine total attempts
         const allResults = await db.quizResult.findMany({
             where: {
@@ -88,7 +101,7 @@ export async function GET(
         // Add maxAttempts and attempt info to the result
         const resultWithAttemptInfo = {
             ...quizResult,
-            maxAttempts: quiz?.maxAttempts || 1,
+            maxAttempts: maxAttempts,
             totalAttempts: allResults.length
         };
 

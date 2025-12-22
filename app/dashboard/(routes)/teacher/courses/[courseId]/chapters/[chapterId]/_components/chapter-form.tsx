@@ -22,7 +22,9 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Editor } from "@/components/editor";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { IconBadge } from "@/components/icon-badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ChapterFormProps {
     initialData: {
@@ -30,6 +32,9 @@ interface ChapterFormProps {
         description: string | null;
         isFree: boolean;
         isPublished: boolean;
+        studyTypes?: string[];
+        requirePassingQuiz?: boolean;
+        requiredQuizId?: string | null;
     };
     courseId: string;
     chapterId: string;
@@ -51,6 +56,15 @@ const accessSchema = z.object({
     isFree: z.boolean().default(false),
 });
 
+const studyTypeSchema = z.object({
+    studyTypes: z.array(z.string()).default([]),
+});
+
+const requiredQuizSchema = z.object({
+    requirePassingQuiz: z.boolean().default(false),
+    requiredQuizId: z.string().optional().nullable(),
+});
+
 export const ChapterForm = ({
     initialData,
     courseId,
@@ -59,14 +73,30 @@ export const ChapterForm = ({
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [isEditingAccess, setIsEditingAccess] = useState(false);
+    const [isEditingStudyType, setIsEditingStudyType] = useState(false);
+    const [isEditingRequiredQuiz, setIsEditingRequiredQuiz] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+    const [quizzes, setQuizzes] = useState<{ id: string; title: string }[]>([]);
 
     const router = useRouter();
 
     useEffect(() => {
         setIsMounted(true);
+        fetchQuizzes();
     }, []);
+
+    const fetchQuizzes = async () => {
+        try {
+            const response = await fetch(`/api/courses/${courseId}/quizzes`);
+            if (response.ok) {
+                const data = await response.json();
+                setQuizzes(data);
+            }
+        } catch (error) {
+            console.error("Error fetching quizzes:", error);
+        }
+    };
 
     const titleForm = useForm<z.infer<typeof titleSchema>>({
         resolver: zodResolver(titleSchema),
@@ -89,9 +119,26 @@ export const ChapterForm = ({
         }
     });
 
+    const studyTypeForm = useForm<z.infer<typeof studyTypeSchema>>({
+        resolver: zodResolver(studyTypeSchema),
+        defaultValues: {
+            studyTypes: initialData.studyTypes || []
+        }
+    });
+
+    const requiredQuizForm = useForm<z.infer<typeof requiredQuizSchema>>({
+        resolver: zodResolver(requiredQuizSchema),
+        defaultValues: {
+            requirePassingQuiz: initialData.requirePassingQuiz || false,
+            requiredQuizId: initialData.requiredQuizId || null,
+        }
+    });
+
     const { isSubmitting: isSubmittingTitle, isValid: isValidTitle } = titleForm.formState;
     const { isSubmitting: isSubmittingDescription, isValid: isValidDescription } = descriptionForm.formState;
     const { isSubmitting: isSubmittingAccess, isValid: isValidAccess } = accessForm.formState;
+    const { isSubmitting: isSubmittingStudyType, isValid: isValidStudyType } = studyTypeForm.formState;
+    const { isSubmitting: isSubmittingRequiredQuiz, isValid: isValidRequiredQuiz } = requiredQuizForm.formState;
 
     const onSubmitTitle = async (values: z.infer<typeof titleSchema>) => {
         try {
@@ -155,6 +202,47 @@ export const ChapterForm = ({
         } catch (error) {
             console.error("[CHAPTER_ACCESS]", error);
             toast.error("Something went wrong");
+        }
+    }
+
+    const onSubmitStudyType = async (values: z.infer<typeof studyTypeSchema>) => {
+        try {
+            await fetch(`/api/courses/${courseId}/chapters/${chapterId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(values),
+            });
+
+            toast.success("تم تحديث نوع الدراسة");
+            setIsEditingStudyType(false);
+            router.refresh();
+        } catch (error) {
+            console.error("[CHAPTER_STUDY_TYPE]", error);
+            toast.error("حدث خطأ");
+        }
+    }
+
+    const onSubmitRequiredQuiz = async (values: z.infer<typeof requiredQuizSchema>) => {
+        try {
+            await fetch(`/api/courses/${courseId}/chapters/${chapterId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    requirePassingQuiz: values.requirePassingQuiz,
+                    requiredQuizId: values.requirePassingQuiz ? values.requiredQuizId : null,
+                }),
+            });
+
+            toast.success("تم تحديث إعدادات الاختبار المطلوب");
+            setIsEditingRequiredQuiz(false);
+            router.refresh();
+        } catch (error) {
+            console.error("[CHAPTER_REQUIRED_QUIZ]", error);
+            toast.error("حدث خطأ");
         }
     }
 
@@ -383,6 +471,225 @@ export const ChapterForm = ({
                                     <div className="flex items-center gap-x-2">
                                         <Button
                                             disabled={!isValidAccess || isSubmittingAccess}
+                                            type="submit"
+                                        >
+                                            حفظ
+                                        </Button>
+                                    </div>
+                                </form>
+                            </Form>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div className="flex items-center gap-x-2">
+                    <IconBadge icon={LayoutDashboard} />
+                    <h2 className="text-xl">
+                        نوع الدراسة
+                    </h2>
+                </div>
+                <div className="space-y-4 mt-4">
+                    <div className="border bg-card rounded-md p-4">
+                        <div className="font-medium flex items-center justify-between">
+                            نوع الدراسة
+                            <Button onClick={() => setIsEditingStudyType(!isEditingStudyType)} variant="ghost">
+                                {isEditingStudyType ? (
+                                    <>إلغاء</>
+                                ) : (
+                                    <>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        تعديل نوع الدراسة
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                        {!isEditingStudyType && (
+                            <p className={cn(
+                                "text-sm mt-2",
+                                (!initialData.studyTypes || initialData.studyTypes.length === 0) && "text-muted-foreground italic"
+                            )}>
+                                {(!initialData.studyTypes || initialData.studyTypes.length === 0) 
+                                    ? "لم يتم تحديد نوع الدراسة (متاح للجميع)"
+                                    : initialData.studyTypes.length === 2
+                                    ? "سنتر وأون لاين"
+                                    : initialData.studyTypes.includes("سنتر")
+                                    ? "سنتر فقط"
+                                    : "أون لاين فقط"
+                                }
+                            </p>
+                        )}
+                        {isEditingStudyType && (
+                            <Form {...studyTypeForm}>
+                                <form
+                                    onSubmit={studyTypeForm.handleSubmit(onSubmitStudyType)}
+                                    className="space-y-4 mt-4"
+                                >
+                                    <FormField
+                                        control={studyTypeForm.control}
+                                        name="studyTypes"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <div className="space-y-3">
+                                                    <FormDescription>
+                                                        اختر نوع الدراسة الذي ينطبق عليه هذا الفصل. يمكنك اختيار واحد أو كليهما.
+                                                    </FormDescription>
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center space-x-2 space-x-reverse">
+                                                            <Checkbox
+                                                                id="center"
+                                                                checked={field.value?.includes("سنتر")}
+                                                                onCheckedChange={(checked) => {
+                                                                    const current = field.value || [];
+                                                                    if (checked) {
+                                                                        field.onChange([...current, "سنتر"]);
+                                                                    } else {
+                                                                        field.onChange(current.filter((type: string) => type !== "سنتر"));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Label htmlFor="center" className="cursor-pointer font-normal">
+                                                                سنتر
+                                                            </Label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2 space-x-reverse">
+                                                            <Checkbox
+                                                                id="online"
+                                                                checked={field.value?.includes("أون لاين")}
+                                                                onCheckedChange={(checked) => {
+                                                                    const current = field.value || [];
+                                                                    if (checked) {
+                                                                        field.onChange([...current, "أون لاين"]);
+                                                                    } else {
+                                                                        field.onChange(current.filter((type: string) => type !== "أون لاين"));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Label htmlFor="online" className="cursor-pointer font-normal">
+                                                                أون لاين
+                                                            </Label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="flex items-center gap-x-2">
+                                        <Button
+                                            disabled={!isValidStudyType || isSubmittingStudyType}
+                                            type="submit"
+                                        >
+                                            حفظ
+                                        </Button>
+                                    </div>
+                                </form>
+                            </Form>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div className="flex items-center gap-x-2">
+                    <IconBadge icon={LayoutDashboard} />
+                    <h2 className="text-xl">
+                        متطلبات الفصل
+                    </h2>
+                </div>
+                <div className="space-y-4 mt-4">
+                    <div className="border bg-card rounded-md p-4">
+                        <div className="font-medium flex items-center justify-between">
+                            الاختبار المطلوب
+                            <Button onClick={() => setIsEditingRequiredQuiz(!isEditingRequiredQuiz)} variant="ghost">
+                                {isEditingRequiredQuiz ? (
+                                    <>إلغاء</>
+                                ) : (
+                                    <>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        تعديل المتطلبات
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                        {!isEditingRequiredQuiz && (
+                            <p className={cn(
+                                "text-sm mt-2",
+                                !initialData.requirePassingQuiz && "text-muted-foreground italic"
+                            )}>
+                                {!initialData.requirePassingQuiz 
+                                    ? "لا يوجد اختبار مطلوب (الفصل متاح للجميع)"
+                                    : initialData.requiredQuizId
+                                    ? `يجب اجتياز الاختبار: ${quizzes.find(q => q.id === initialData.requiredQuizId)?.title || "غير محدد"}`
+                                    : "يجب تحديد الاختبار المطلوب"
+                                }
+                            </p>
+                        )}
+                        {isEditingRequiredQuiz && (
+                            <Form {...requiredQuizForm}>
+                                <form
+                                    onSubmit={requiredQuizForm.handleSubmit(onSubmitRequiredQuiz)}
+                                    className="space-y-4 mt-4"
+                                >
+                                    <FormField
+                                        control={requiredQuizForm.control}
+                                        name="requirePassingQuiz"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={(checked) => {
+                                                            field.onChange(checked);
+                                                            if (!checked) {
+                                                                requiredQuizForm.setValue("requiredQuizId", null);
+                                                            }
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <div className="space-y-1 leading-none">
+                                                    <FormDescription>
+                                                        قم بالتحقق من هذا المربع إذا أردت أن يكون الفصل مرئياً فقط بعد اجتياز اختبار معين
+                                                    </FormDescription>
+                                                </div>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {requiredQuizForm.watch("requirePassingQuiz") && (
+                                        <FormField
+                                            control={requiredQuizForm.control}
+                                            name="requiredQuizId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormDescription>
+                                                        اختر الاختبار الذي يجب على الطالب اجتيازه لرؤية هذا الفصل
+                                                    </FormDescription>
+                                                    <Select
+                                                        onValueChange={field.onChange}
+                                                        value={field.value || ""}
+                                                    >
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="اختر الاختبار" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {quizzes.map((quiz) => (
+                                                                <SelectItem key={quiz.id} value={quiz.id}>
+                                                                    {quiz.title}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    )}
+                                    <div className="flex items-center gap-x-2">
+                                        <Button
+                                            disabled={!isValidRequiredQuiz || isSubmittingRequiredQuiz}
                                             type="submit"
                                         >
                                             حفظ

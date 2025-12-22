@@ -43,6 +43,19 @@ export async function POST(
             return new NextResponse("Quiz not found", { status: 404 });
         }
 
+        // Check for per-student retry limit
+        const studentSettings = await db.quizStudentSettings.findUnique({
+            where: {
+                studentId_quizId: {
+                    studentId: userId,
+                    quizId: resolvedParams.quizId
+                }
+            }
+        });
+
+        // Use per-student maxAttempts if available, otherwise use global maxAttempts
+        const maxAttempts = studentSettings?.maxAttempts ?? quiz.maxAttempts;
+
         // Check how many attempts the user has made
         const existingResults = await db.quizResult.findMany({
             where: {
@@ -52,7 +65,7 @@ export async function POST(
         });
 
         // Check if user can retry (hasn't reached max attempts)
-        if (existingResults.length >= quiz.maxAttempts) {
+        if (existingResults.length >= maxAttempts) {
             return new NextResponse(
                 JSON.stringify({ error: "لقد وصلت إلى الحد الأقصى من المحاولات المسموحة" }),
                 { status: 400, headers: { "Content-Type": "application/json" } }
@@ -106,7 +119,7 @@ export async function POST(
             success: true,
             message: "يمكنك الآن إعادة محاولة الاختبار",
             nextAttempt: existingResults.length + 1,
-            maxAttempts: quiz.maxAttempts
+            maxAttempts: maxAttempts
         });
     } catch (error) {
         console.error("[QUIZ_RETRY]", error);

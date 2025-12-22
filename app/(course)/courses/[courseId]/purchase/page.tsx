@@ -89,6 +89,7 @@ export default function PurchasePage({
         body: JSON.stringify({
           code: promocode.trim(),
           coursePrice: course.price || 0,
+          courseId: course.id,
         }),
       });
 

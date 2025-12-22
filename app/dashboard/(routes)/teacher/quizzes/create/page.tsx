@@ -8,11 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, GripVertical, X, Mic } from "lucide-react";
+import { Plus, Trash2, GripVertical, X, Mic, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { usePathname, useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { UploadDropzone } from "@/lib/uploadthing";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Course {
     id: string;
@@ -81,9 +84,17 @@ const CreateQuizPage = () => {
     const [uploadingImages, setUploadingImages] = useState<{ [key: string]: boolean }>({});
     const [listeningQuestionId, setListeningQuestionId] = useState<string | null>(null);
     const recognitionRef = useRef<any>(null);
+    const [students, setStudents] = useState<Array<{ id: string; fullName: string; phoneNumber: string }>>([]);
+    const [studentRetryLimits, setStudentRetryLimits] = useState<Map<string, number>>(new Map());
+    const [studentSearchQuery, setStudentSearchQuery] = useState("");
+    const [isStudentPopoverOpen, setIsStudentPopoverOpen] = useState(false);
+    const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+    const [selectedStudentRetries, setSelectedStudentRetries] = useState<number>(1);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     useEffect(() => {
         fetchCourses();
+        fetchStudents();
         
         // Check if courseId is provided in URL params
         const urlParams = new URLSearchParams(window.location.search);
@@ -93,6 +104,23 @@ const CreateQuizPage = () => {
             fetchCourseItems(courseIdFromUrl);
         }
     }, []);
+
+    const fetchStudents = async () => {
+        try {
+            const response = await fetch("/api/teacher/users");
+            if (response.ok) {
+                const data = await response.json();
+                const studentUsers = data.filter((user: any) => user.role === "USER");
+                setStudents(studentUsers.map((user: any) => ({
+                    id: user.id,
+                    fullName: user.fullName,
+                    phoneNumber: user.phoneNumber
+                })));
+            }
+        } catch (error) {
+            console.error("Error fetching students:", error);
+        }
+    };
 
     useEffect(() => {
         return () => {
@@ -350,11 +378,32 @@ const CreateQuizPage = () => {
                     questions: cleanedQuestions,
                     position: selectedPosition,
                     timer: quizTimer,
-                    maxAttempts: maxAttempts,
+                    maxAttempts: maxAttempts, // Default for all students
                 }),
             });
 
             if (response.ok) {
+                const quizData = await response.json();
+                const quizId = quizData.id;
+
+                // Save per-student retry limits
+                if (studentRetryLimits.size > 0) {
+                    const settingsPromises = Array.from(studentRetryLimits.entries()).map(([studentId, maxAttempts]) =>
+                        fetch(`/api/quizzes/${quizId}/student-settings`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                studentId,
+                                maxAttempts,
+                            }),
+                        })
+                    );
+
+                    await Promise.all(settingsPromises);
+                }
+
                 toast.success("تم إنشاء الاختبار بنجاح");
                 router.push(dashboardPath);
             } else {
@@ -598,10 +647,211 @@ const CreateQuizPage = () => {
                             min="1"
                         />
                         <p className="text-sm text-muted-foreground">
-                            عدد المرات التي يمكن للطالب محاولة الاختبار
+                            عدد المرات التي يمكن للطالب محاولة الاختبار (افتراضي لجميع الطلاب)
                         </p>
                     </div>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Users className="h-5 w-5" />
+                                <CardTitle>إعدادات المحاولات لكل طالب</CardTitle>
+                            </div>
+                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        إضافة إعدادات طالب
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>إضافة إعدادات محاولات لطالب</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 mt-4">
+                                        <div className="space-y-2">
+                                            <Label>اختر الطالب</Label>
+                                            <Popover open={isStudentPopoverOpen} onOpenChange={setIsStudentPopoverOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className="w-full justify-between"
+                                                    >
+                                                        {selectedStudentId
+                                                            ? students.find(s => s.id === selectedStudentId)?.fullName || "اختر طالب..."
+                                                            : "اختر طالب..."}
+                                                        <Search className="h-4 w-4 mr-2 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[400px] p-0 z-[200]" align="start">
+                                                    <Command shouldFilter={false}>
+                                                        <CommandInput
+                                                            placeholder="ابحث عن طالب بالاسم أو رقم الهاتف..."
+                                                            value={studentSearchQuery}
+                                                            onValueChange={setStudentSearchQuery}
+                                                        />
+                                                        <CommandList 
+                                                            className="max-h-[300px] overflow-y-auto overscroll-contain"
+                                                            style={{
+                                                                touchAction: 'pan-y',
+                                                                WebkitOverflowScrolling: 'touch'
+                                                            }}
+                                                            onWheel={(e) => {
+                                                                e.stopPropagation();
+                                                                const element = e.currentTarget;
+                                                                const { scrollTop, scrollHeight, clientHeight } = element;
+                                                                const isAtTop = scrollTop === 0;
+                                                                const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+                                                                
+                                                                if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                            onTouchStart={(e) => {
+                                                                e.stopPropagation();
+                                                            }}
+                                                            onTouchMove={(e) => {
+                                                                e.stopPropagation();
+                                                                const element = e.currentTarget;
+                                                                const { scrollTop, scrollHeight, clientHeight } = element;
+                                                                const touch = e.touches[0];
+                                                                const rect = element.getBoundingClientRect();
+                                                                const touchY = touch.clientY - rect.top;
+                                                                
+                                                                const isAtTop = scrollTop === 0 && touchY > 0;
+                                                                const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1 && touchY < clientHeight;
+                                                                
+                                                                if (isAtTop || isAtBottom) {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                            onTouchEnd={(e) => {
+                                                                e.stopPropagation();
+                                                            }}
+                                                        >
+                                                            <CommandEmpty>لا يوجد طلاب</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {students
+                                                                    .filter(student => {
+                                                                        if (!studentSearchQuery) return true;
+                                                                        const query = studentSearchQuery.toLowerCase();
+                                                                        return student.fullName.toLowerCase().includes(query) ||
+                                                                            student.phoneNumber.includes(query);
+                                                                    })
+                                                                    .filter(student => !studentRetryLimits.has(student.id))
+                                                                    .map((student) => (
+                                                                        <CommandItem
+                                                                            key={student.id}
+                                                                            value={student.id}
+                                                                            onSelect={() => {
+                                                                                setSelectedStudentId(student.id);
+                                                                                setIsStudentPopoverOpen(false);
+                                                                                setStudentSearchQuery("");
+                                                                            }}
+                                                                        >
+                                                                            <div className="flex flex-col">
+                                                                                <span>{student.fullName}</span>
+                                                                                <span className="text-xs text-muted-foreground">{student.phoneNumber}</span>
+                                                                            </div>
+                                                                        </CommandItem>
+                                                                    ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>عدد المحاولات المسموحة</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedStudentRetries}
+                                                onChange={(e) => setSelectedStudentRetries(Math.max(1, parseInt(e.target.value) || 1))}
+                                                min="1"
+                                                placeholder="1"
+                                            />
+                                            <p className="text-sm text-muted-foreground">
+                                                عدد المحاولات المخصص لهذا الطالب (يتجاوز الإعداد الافتراضي)
+                                            </p>
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="outline" onClick={() => {
+                                                setIsDialogOpen(false);
+                                                setSelectedStudentId("");
+                                                setSelectedStudentRetries(1);
+                                                setStudentSearchQuery("");
+                                                setIsStudentPopoverOpen(false);
+                                            }}>
+                                                إلغاء
+                                            </Button>
+                                            <Button onClick={() => {
+                                                if (!selectedStudentId || selectedStudentRetries < 1) {
+                                                    toast.error("يرجى اختيار طالب وعدد محاولات صحيح");
+                                                    return;
+                                                }
+                                                setStudentRetryLimits(prev => {
+                                                    const newMap = new Map(prev);
+                                                    newMap.set(selectedStudentId, selectedStudentRetries);
+                                                    return newMap;
+                                                });
+                                                setIsDialogOpen(false);
+                                                setSelectedStudentId("");
+                                                setSelectedStudentRetries(1);
+                                                setStudentSearchQuery("");
+                                                setIsStudentPopoverOpen(false);
+                                            }}>
+                                                حفظ
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {studentRetryLimits.size === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">
+                                لا توجد إعدادات مخصصة. سيستخدم جميع الطلاب الإعداد الافتراضي ({maxAttempts} محاولة)
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {Array.from(studentRetryLimits.entries()).map(([studentId, retries]) => {
+                                    const student = students.find(s => s.id === studentId);
+                                    return (
+                                        <div key={studentId} className="flex items-center justify-between p-3 border rounded-lg">
+                                            <div>
+                                                <div className="font-medium">{student?.fullName}</div>
+                                                <div className="text-sm text-muted-foreground">{student?.phoneNumber}</div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <div className="text-sm text-muted-foreground">عدد المحاولات</div>
+                                                    <div className="font-medium">{retries}</div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setStudentRetryLimits(prev => {
+                                                            const newMap = new Map(prev);
+                                                            newMap.delete(studentId);
+                                                            return newMap;
+                                                        });
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">

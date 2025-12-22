@@ -60,6 +60,19 @@ export async function GET(
             return new NextResponse("Quiz not found", { status: 404 });
         }
 
+        // Check for per-student retry limit
+        const studentSettings = await db.quizStudentSettings.findUnique({
+            where: {
+                studentId_quizId: {
+                    studentId: userId,
+                    quizId: resolvedParams.quizId
+                }
+            }
+        });
+
+        // Use per-student maxAttempts if available, otherwise use global maxAttempts
+        const maxAttempts = studentSettings?.maxAttempts ?? quiz.maxAttempts;
+
         // Check if user has already taken this quiz and if they can take it again
         const existingResults = await db.quizResult.findMany({
             where: {
@@ -86,7 +99,7 @@ export async function GET(
         const totalAttempts = submittedAttempts + (hasIncompleteAttempt ? 1 : 0);
 
         // Check if they've reached max attempts
-        if (totalAttempts >= quiz.maxAttempts) {
+        if (totalAttempts >= maxAttempts) {
             // If they have an incomplete attempt, they can't retry
             if (hasIncompleteAttempt) {
                 return new NextResponse("Maximum attempts reached for this quiz. You have an incomplete attempt that counts as an attempt.", { status: 400 });
@@ -149,9 +162,9 @@ export async function GET(
             } else {
                 // If attempt is not completed (no completedAt), it counts as an attempt
                 // If they have retries left, delete the incomplete attempt and allow a new one
-                console.log(`[QUIZ_GET] Found incomplete attempt, counting as attempt. Total attempts: ${totalAttempts}, Max: ${quiz.maxAttempts}`);
+                console.log(`[QUIZ_GET] Found incomplete attempt, counting as attempt. Total attempts: ${totalAttempts}, Max: ${maxAttempts}`);
                 
-                if (totalAttempts < quiz.maxAttempts) {
+                if (totalAttempts < maxAttempts) {
                     // They have retries left, delete the incomplete attempt and create a new one
                     console.log(`[QUIZ_GET] Allowing retry after incomplete attempt`);
                     isRetry = true;
@@ -189,13 +202,13 @@ export async function GET(
 
         // Calculate remaining attempts
         // Remaining = maxAttempts - currentAttemptNumber (current attempt is in progress, so it counts)
-        const remainingAttempts = Math.max(0, quiz.maxAttempts - currentAttemptNumber);
+        const remainingAttempts = Math.max(0, maxAttempts - currentAttemptNumber);
 
         // Add attempt information to the quiz response
         const quizWithAttemptInfo = {
             ...quiz,
             currentAttempt: currentAttemptNumber,
-            maxAttempts: quiz.maxAttempts,
+            maxAttempts: maxAttempts,
             previousAttempts: existingResults.length,
             isRetry: isRetry,
             retryReason: retryReason,

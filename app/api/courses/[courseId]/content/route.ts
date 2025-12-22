@@ -40,16 +40,32 @@ export async function GET(
                 courseId: resolvedParams.courseId,
                 isPublished: true
             },
-            include: hasAccess && userId ? {
-                userProgress: {
+            include: {
+                requiredQuiz: hasAccess && userId ? {
+                    include: {
+                        quizResults: {
+                            where: {
+                                studentId: userId
+                            },
+                            select: {
+                                percentage: true
+                            },
+                            orderBy: {
+                                submittedAt: 'desc'
+                            },
+                            take: 1
+                        }
+                    }
+                } : undefined,
+                userProgress: hasAccess && userId ? {
                     where: {
                         userId
                     },
                     select: {
                         isCompleted: true
                     }
-                }
-            } : undefined,
+                } : undefined
+            },
             orderBy: {
                 position: "asc"
             }
@@ -79,21 +95,83 @@ export async function GET(
             }
         });
 
-        // Combine and sort by position
-        const allContent = [
-            ...chapters.map(chapter => ({
+        // Combine all content and sort by position to check sequential access
+        const allContentUnsorted = [
+            ...chapters.map((chapter: typeof chapters[0]) => ({
                 ...chapter,
                 type: 'chapter' as const,
-                // Only include userProgress if user has access
                 userProgress: hasAccess ? chapter.userProgress : undefined
             })),
-            ...quizzes.map(quiz => ({
+            ...quizzes.map((quiz: typeof quizzes[0]) => ({
                 ...quiz,
                 type: 'quiz' as const,
-                // Only include quizResults if user has access
                 quizResults: hasAccess ? quiz.quizResults : undefined
             }))
         ].sort((a, b) => a.position - b.position);
+
+        // Check sequential access for chapters
+        const allContent = allContentUnsorted.map((content, index) => {
+            if (content.type !== 'chapter') {
+                return content;
+            }
+
+            const chapter = content as typeof content & { type: 'chapter' };
+            let isLocked = false;
+            let lockReason: string | null = null;
+
+            // First check explicit quiz requirement
+            if (chapter.requirePassingQuiz && chapter.requiredQuizId) {
+                if (!hasAccess || !userId) {
+                    isLocked = true;
+                    lockReason = "يجب شراء الكورس أولاً";
+                } else {
+                    const quizResult = chapter.requiredQuiz?.quizResults?.[0];
+                    if (!quizResult || quizResult.percentage < 50) {
+                        isLocked = true;
+                        lockReason = "يجب اجتياز الاختبار المطلوب بنسبة 50% على الأقل";
+                    }
+                }
+            }
+
+            // Check sequential access - if there's a quiz before this chapter
+            if (!isLocked && hasAccess && userId) {
+                // Find the previous quiz before this chapter
+                for (let i = index - 1; i >= 0; i--) {
+                    const prevContent = allContentUnsorted[i];
+                    if (prevContent.type === 'quiz') {
+                        const prevQuiz = prevContent as typeof prevContent & { type: 'quiz' };
+                        // Check if student passed this quiz (50% or higher)
+                        const quizResults = prevQuiz.quizResults || [];
+                        if (quizResults.length === 0) {
+                            // Student hasn't taken the quiz yet
+                            isLocked = true;
+                            lockReason = `يجب اجتياز الاختبار "${prevQuiz.title}" بنسبة 50% على الأقل أولاً`;
+                            break;
+                        }
+                        
+                        // Get the best result (highest percentage)
+                        const bestResult = quizResults.reduce((best: typeof quizResults[0], current: typeof quizResults[0]) => 
+                            current.percentage > best.percentage ? current : best
+                        );
+                        
+                        if (bestResult.percentage < 50) {
+                            isLocked = true;
+                            lockReason = `يجب اجتياز الاختبار "${prevQuiz.title}" بنسبة 50% على الأقل أولاً`;
+                            break;
+                        }
+                        
+                        // Found a passed quiz, stop checking
+                        break;
+                    }
+                }
+            }
+
+            return {
+                ...chapter,
+                isLocked,
+                lockReason
+            };
+        });
 
         return NextResponse.json(allContent);
     } catch (error) {

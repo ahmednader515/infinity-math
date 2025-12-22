@@ -46,6 +46,112 @@ export async function GET(
       return new NextResponse("Chapter not found", { status: 404 });
     }
 
+    // Check if user has access to the course
+    const purchase = await db.purchase.findFirst({
+      where: {
+        userId,
+        courseId: courseId,
+        status: "ACTIVE"
+      }
+    });
+
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+      select: { price: true }
+    });
+
+    const hasAccess = course && (course.price === 0 || purchase !== null);
+
+    // Check if chapter is locked due to sequential access
+    if (hasAccess && userId) {
+      const [chapters, quizzes] = await db.$transaction([
+        db.chapter.findMany({
+          where: {
+            courseId: courseId,
+            isPublished: true
+          },
+          select: {
+            id: true,
+            position: true
+          },
+          orderBy: {
+            position: "asc"
+          }
+        }),
+        db.quiz.findMany({
+          where: {
+            courseId: courseId,
+            isPublished: true
+          },
+          select: {
+            id: true,
+            position: true
+          },
+          orderBy: {
+            position: "asc"
+          }
+        })
+      ]);
+
+      const chaptersWithType = chapters.map(chapter => ({ ...chapter, type: 'chapter' as const }));
+      const quizzesWithType = quizzes.map(quiz => ({ ...quiz, type: 'quiz' as const }));
+
+      const sortedContent = [...chaptersWithType, ...quizzesWithType].sort((a, b) => a.position - b.position);
+
+      const currentIndex = sortedContent.findIndex(content => 
+        content.id === chapterId && content.type === 'chapter'
+      );
+
+      // Check if there's a quiz before this chapter that needs to be passed
+      if (currentIndex > 0) {
+        for (let i = currentIndex - 1; i >= 0; i--) {
+          const prevContent = sortedContent[i];
+          if (prevContent.type === 'quiz') {
+            // Check if student passed this quiz
+            const quizResults = await db.quizResult.findMany({
+              where: {
+                studentId: userId,
+                quizId: prevContent.id
+              },
+              select: {
+                percentage: true
+              },
+              orderBy: {
+                submittedAt: 'desc'
+              }
+            });
+
+            if (quizResults.length === 0) {
+              return new NextResponse(
+                JSON.stringify({ 
+                  error: "يجب اجتياز الاختبار السابق بنسبة 50% على الأقل أولاً",
+                  isLocked: true 
+                }), 
+                { status: 403 }
+              );
+            }
+
+            const bestResult = quizResults.reduce((best, current) => 
+              current.percentage > best.percentage ? current : best
+            );
+
+            if (bestResult.percentage < 50) {
+              return new NextResponse(
+                JSON.stringify({ 
+                  error: "يجب اجتياز الاختبار السابق بنسبة 50% على الأقل أولاً",
+                  isLocked: true 
+                }), 
+                { status: 403 }
+              );
+            }
+
+            // Found a passed quiz, stop checking
+            break;
+          }
+        }
+      }
+    }
+
     const [chapters, quizzes] = await db.$transaction([
       db.chapter.findMany({
         where: {

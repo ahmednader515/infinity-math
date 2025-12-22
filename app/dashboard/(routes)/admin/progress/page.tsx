@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Eye, BookOpen, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -17,6 +18,7 @@ interface User {
     fullName: string;
     phoneNumber: string;
     role: string;
+    studyType?: string | null;
     _count: {
         purchases: number;
         userProgress: number;
@@ -62,6 +64,7 @@ const ProgressPage = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [studyTypeFilter, setStudyTypeFilter] = useState<string>("all");
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
     const [userPurchases, setUserPurchases] = useState<Purchase[]>([]);
@@ -110,10 +113,16 @@ const ProgressPage = () => {
         setIsDialogOpen(true);
     };
 
-    const filteredUsers = users.filter(user =>
-        user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.phoneNumber.includes(searchTerm)
-    );
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.phoneNumber.includes(searchTerm);
+        
+        const matchesStudyType = studyTypeFilter === "all" || 
+            (studyTypeFilter === "سنتر" && user.studyType === "سنتر") ||
+            (studyTypeFilter === "أون لاين" && user.studyType === "أون لاين");
+        
+        return matchesSearch && matchesStudyType;
+    });
 
     const studentUsers = filteredUsers.filter(user => user.role === "USER");
 
@@ -142,14 +151,28 @@ const ProgressPage = () => {
             <Card>
                 <CardHeader>
                     <CardTitle>قائمة الطلاب</CardTitle>
-                    <div className="flex items-center space-x-2">
-                        <Search className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="البحث بالاسم أو رقم الهاتف..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-sm"
-                        />
+                    <div className="flex items-center gap-4 mt-4">
+                        <div className="flex items-center space-x-2">
+                            <Search className="h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="البحث بالاسم أو رقم الهاتف..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="max-w-sm"
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Select value={studyTypeFilter} onValueChange={setStudyTypeFilter}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="نوع الدراسة" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">الكل</SelectItem>
+                                    <SelectItem value="سنتر">سنتر</SelectItem>
+                                    <SelectItem value="أون لاين">أون لاين</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>

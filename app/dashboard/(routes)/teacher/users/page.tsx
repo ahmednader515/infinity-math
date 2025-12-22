@@ -358,7 +358,7 @@ const UsersPage = () => {
                                                                     <SelectTrigger className="col-span-3">
                                                                         <SelectValue placeholder="اختر الدور" />
                                                                     </SelectTrigger>
-                                                                    <SelectContent>
+                                                                    <SelectContent className="z-[200]">
                                                                         <SelectItem value="USER">طالب</SelectItem>
                                                                         <SelectItem value="TEACHER">معلم</SelectItem>
                                                                         <SelectItem value="ADMIN">مشرف</SelectItem>
@@ -547,7 +547,7 @@ const UsersPage = () => {
                                                                     <SelectTrigger className="col-span-3">
                                                                         <SelectValue placeholder="اختر الدور" />
                                                                     </SelectTrigger>
-                                                                    <SelectContent>
+                                                                    <SelectContent className="z-[200]">
                                                                         <SelectItem value="USER">طالب</SelectItem>
                                                                         <SelectItem value="TEACHER">معلم</SelectItem>
                                                                         <SelectItem value="ADMIN">مشرف</SelectItem>

@@ -96,19 +96,19 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
             {filteredCourses.length > 0 ? (
               filteredCourses.map((course) => (
                 <TableRow key={course.id}>
-                  <TableCell className="font-medium">{course.title}</TableCell>
-                  <TableCell>{formatPrice(course.price || 0)}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium text-right">{course.title}</TableCell>
+                  <TableCell className="text-right">{formatPrice(course.price || 0)}</TableCell>
+                  <TableCell className="text-right">
                     <Badge variant={course.isPublished ? "default" : "secondary"}>
                       {course.isPublished ? "منشور" : "مسودة"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     <div className="text-sm">
                       {format(new Date(course.createdAt), "dd/MM/yyyy", { locale: ar })}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     {course.grade ? (
                       course.grade === "الكل" ? (
                         <div className="text-sm">
@@ -136,8 +136,8 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
+                  <TableCell className="text-right">
+                    <div className="flex items-center gap-2 justify-end">
                       <Link href={`/dashboard/teacher/courses/${course.id}`}>
                         <Button variant="ghost" size="icon" title="تعديل الكورس">
                           <Pencil className="h-4 w-4" />
