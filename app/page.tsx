@@ -267,7 +267,7 @@ export default function HomePage() {
               حلها... يمكن تطلع الإجابة صح!
             </p>
             <Button size="lg" asChild className="bg-[#0083d3] hover:bg-[#0083d3]/90 text-white">
-              <Link href="/sign-up">
+              <Link href="/sign-in">
                 ابدأ الآن <ArrowRight className="mr-2 h-4 w-4" />
               </Link>
             </Button>
