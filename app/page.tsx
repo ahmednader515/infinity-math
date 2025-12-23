@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { RecaptchaGate } from "@/components/recaptcha-gate";
 
 const WhatsAppButton = () => {
-  const phoneNumber = "01040626158";
+  const phoneNumber = "201040626158"; // Egypt country code +20, removing leading 0
   const whatsappUrl = `https://wa.me/${phoneNumber}`;
 
   return (
