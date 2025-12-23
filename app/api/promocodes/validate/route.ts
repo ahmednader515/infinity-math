@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        if (!code || !coursePrice) {
+        if (!code || !coursePrice || !courseId) {
             return new NextResponse(
-                JSON.stringify({ error: "رمز الكوبون وسعر الكورس مطلوبان" }),
+                JSON.stringify({ error: "حدث خطأ أثناء التحقق من الكوبون. يرجى المحاولة مرة أخرى" }),
                 { status: 400, headers: { "Content-Type": "application/json" } }
             );
         }
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         // Check if promocode applies to this course
         // If promocode has courses associated, it only applies to those courses
         // If no courses are associated, it applies to all courses
-        if (promocode.courses.length > 0 && courseId) {
+        if (promocode.courses.length > 0) {
             const appliesToCourse = promocode.courses.some((pc: any) => pc.courseId === courseId);
             if (!appliesToCourse) {
                 return new NextResponse(

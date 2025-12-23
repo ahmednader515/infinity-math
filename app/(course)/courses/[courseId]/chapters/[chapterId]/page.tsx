@@ -43,6 +43,7 @@ const ChapterPage = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
   const [hasAccess, setHasAccess] = useState(false);
+  const [studyTypeError, setStudyTypeError] = useState<string | null>(null);
 
   console.log("🔍 ChapterPage render:", {
     chapterId: routeParams.chapterId,
@@ -141,8 +142,57 @@ const ChapterPage = () => {
     const fetchData = async () => {
       console.log("🔍 ChapterPage fetchData started");
       try {
-        const [chapterResponse, progressResponse, accessResponse] = await Promise.all([
-          axios.get(`/api/courses/${routeParams.courseId}/chapters/${routeParams.chapterId}`),
+        // Fetch chapter first to check for study type mismatch
+        let chapterResponse;
+        try {
+          chapterResponse = await axios.get(`/api/courses/${routeParams.courseId}/chapters/${routeParams.chapterId}`);
+        } catch (chapterError) {
+          const axiosError = chapterError as AxiosError;
+          if (axiosError.response?.status === 403) {
+            // Parse error data
+            let errorData: { error?: string; isLocked?: boolean; isStudyTypeMismatch?: boolean };
+            try {
+              if (typeof axiosError.response.data === 'string') {
+                errorData = JSON.parse(axiosError.response.data);
+              } else {
+                errorData = axiosError.response.data as { error?: string; isLocked?: boolean; isStudyTypeMismatch?: boolean };
+              }
+            } catch {
+              errorData = { error: String(axiosError.response.data) };
+            }
+            
+            if (errorData.isStudyTypeMismatch) {
+              // Study type mismatch - show message in content area
+              console.log("🔍 Study type mismatch detected:", errorData);
+              setStudyTypeError(errorData.error || "نوع دراستك لا يطابق متطلبات هذا الفصل");
+              setLoading(false);
+              return;
+            } else if (errorData.isLocked) {
+              // Chapter is locked, redirect to first accessible content
+              toast.error(errorData.error || "هذا الفصل مقفل");
+              try {
+                const firstContentResponse = await axios.get(`/api/courses/${routeParams.courseId}/first-content`);
+                const firstContent = firstContentResponse.data;
+                if (firstContent.id && firstContent.type) {
+                  if (firstContent.type === 'quiz') {
+                    router.push(`/courses/${routeParams.courseId}/quizzes/${firstContent.id}`);
+                  } else {
+                    router.push(`/courses/${routeParams.courseId}/chapters/${firstContent.id}`);
+                  }
+                } else {
+                  router.push(`/courses/${routeParams.courseId}/preview`);
+                }
+              } catch {
+                router.push(`/courses/${routeParams.courseId}/preview`);
+              }
+              return;
+            }
+          }
+          throw chapterError; // Re-throw if not handled
+        }
+        
+        // Fetch other data in parallel
+        const [progressResponse, accessResponse] = await Promise.all([
           axios.get(`/api/courses/${routeParams.courseId}/progress`),
           axios.get(`/api/courses/${routeParams.courseId}/access`)
         ]);
@@ -157,19 +207,55 @@ const ChapterPage = () => {
         setIsCompleted(chapterResponse.data.userProgress?.[0]?.isCompleted || false);
         setCourseProgress(progressResponse.data.progress);
         setHasAccess(accessResponse.data.hasAccess);
+        setStudyTypeError(null); // Clear any previous study type error
       } catch (error) {
         const axiosError = error as AxiosError;
         console.error("🔍 Error fetching data:", axiosError);
         if (axiosError.response) {
           console.error("🔍 Error response:", axiosError.response.data);
-          const errorData = axiosError.response.data as { error?: string; isLocked?: boolean };
-          if (axiosError.response.status === 403 && errorData.isLocked) {
-            // Chapter is locked, redirect to course page or show message
-            toast.error(errorData.error || "هذا الفصل مقفل");
-            router.push(`/courses/${routeParams.courseId}`);
-          } else {
-            toast.error(`فشل تحميل الفصل: ${errorData.error || axiosError.response.data}`);
+          
+          // Parse error data - it might be a string or an object
+          let errorData: { error?: string; isLocked?: boolean; isStudyTypeMismatch?: boolean };
+          try {
+            if (typeof axiosError.response.data === 'string') {
+              errorData = JSON.parse(axiosError.response.data);
+            } else {
+              errorData = axiosError.response.data as { error?: string; isLocked?: boolean; isStudyTypeMismatch?: boolean };
+            }
+          } catch {
+            errorData = { error: String(axiosError.response.data) };
           }
+          
+          if (axiosError.response.status === 403) {
+            if (errorData.isStudyTypeMismatch) {
+              // Study type mismatch - show message in content area, don't redirect
+              setStudyTypeError(errorData.error || "نوع دراستك لا يطابق متطلبات هذا الفصل");
+              setLoading(false);
+              return;
+            } else if (errorData.isLocked) {
+              // Chapter is locked, redirect to first accessible content
+              toast.error(errorData.error || "هذا الفصل مقفل");
+              try {
+                const firstContentResponse = await axios.get(`/api/courses/${routeParams.courseId}/first-content`);
+                const firstContent = firstContentResponse.data;
+                if (firstContent.id && firstContent.type) {
+                  if (firstContent.type === 'quiz') {
+                    router.push(`/courses/${routeParams.courseId}/quizzes/${firstContent.id}`);
+                  } else {
+                    router.push(`/courses/${routeParams.courseId}/chapters/${firstContent.id}`);
+                  }
+                } else {
+                  router.push(`/courses/${routeParams.courseId}/preview`);
+                }
+              } catch {
+                router.push(`/courses/${routeParams.courseId}/preview`);
+              }
+              return;
+            }
+          }
+          
+          // Other errors
+          toast.error(`فشل تحميل الفصل: ${errorData.error || axiosError.response.data}`);
         } else if (axiosError.request) {
           console.error("🔍 Error request:", axiosError.request);
           toast.error("فشل الاتصال بالخادم");
@@ -242,19 +328,42 @@ const ChapterPage = () => {
     );
   }
 
+  // Show study type mismatch message in content area (check this first)
+  if (studyTypeError) {
+    return (
+      <div className="h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4 max-w-md">
+          <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="text-2xl font-semibold">الفصل غير متاح</h2>
+          <p className="text-muted-foreground">{studyTypeError}</p>
+          <Button onClick={() => router.push(`/courses/${routeParams.courseId}/preview`)}>
+            العودة إلى الكورس
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!chapter) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-muted-foreground">لم يتم العثور على الفصل</div>
+      <div className="h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4 max-w-md">
+          <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="text-2xl font-semibold">الفصل غير متاح</h2>
+          <p className="text-muted-foreground">عذراً، لا يمكن الوصول إلى هذا الفصل حالياً. قد يكون الفصل غير منشور أو غير متاح لنوع دراستك.</p>
+          <Button onClick={() => router.push(`/courses/${routeParams.courseId}/preview`)}>
+            العودة إلى الكورس
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (!hasAccess && !chapter.isFree) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Lock className="h-8 w-8 mx-auto text-muted-foreground" />
+      <div className="h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4 max-w-md">
+          <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
           <h2 className="text-2xl font-semibold">هذا الفصل مغلق</h2>
           <p className="text-muted-foreground">شراء الكورس للوصول إلى جميع الفصول</p>
           <Button onClick={() => router.push(`/courses/${routeParams.courseId}/purchase`)}>

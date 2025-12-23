@@ -11,15 +11,17 @@ import {
     FormControl,
     FormField,
     FormItem,
+    FormLabel,
     FormMessage
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { Course } from "@prisma/client";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice } from "@/lib/format";
 
 interface PriceFormProps {
@@ -29,7 +31,8 @@ interface PriceFormProps {
 }
 
 const formSchema = z.object({
-    price: z.coerce.number()
+    price: z.coerce.number(),
+    isFree: z.boolean().default(false)
 });
 
 export const PriceForm = ({
@@ -43,18 +46,32 @@ export const PriceForm = ({
 
     const router = useRouter();
 
+    const isFreeCourse = initialData?.price === 0;
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             price: initialData?.price ?? 0,
+            isFree: isFreeCourse,
         }
     });
 
     const { isSubmitting, isValid } = form.formState;
+    const isFree = form.watch("isFree");
+
+    // Update price to 0 when isFree is checked
+    useEffect(() => {
+        if (isFree) {
+            form.setValue("price", 0);
+        }
+    }, [isFree, form]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            await axios.patch(`/api/courses/${courseId}`, values);
+            // If course is free, ensure price is 0 (not null or undefined)
+            const priceToSubmit = values.isFree ? 0 : (values.price || 0);
+            // Explicitly ensure we send a number, not null
+            await axios.patch(`/api/courses/${courseId}`, { price: Number(priceToSubmit) });
             toast.success("تم تحديث الكورس");
             toggleEdit();
             router.refresh();
@@ -95,14 +112,36 @@ export const PriceForm = ({
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
                         <FormField 
                             control={form.control}
+                            name="isFree"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={(checked) => {
+                                                field.onChange(checked);
+                                            }}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>
+                                            كورس مجاني
+                                        </FormLabel>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField 
+                            control={form.control}
                             name="price"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>السعر (جنيه)</FormLabel>
                                     <FormControl>
                                         <Input 
                                             type="number"
                                             step="0.01"
-                                            disabled={isSubmitting}
+                                            disabled={isSubmitting || isFree}
                                             placeholder="ضع سعر للكورس"
                                             value={field.value || ''}
                                             onChange={(e) => {

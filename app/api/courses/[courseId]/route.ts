@@ -137,11 +137,19 @@ export async function PATCH(
         // ADMIN can update any course, TEACHER can only update their own (already verified)
         console.log("[COURSE_ID_PATCH] Updating course with data:", values);
 
+        // Ensure price is 0 (not null) when course is free
+        const updateData: any = { ...values };
+        if (updateData.price === null || updateData.price === undefined || updateData.price === '') {
+            // If price is explicitly set to null/undefined/empty, set to 0 for free courses
+            updateData.price = 0;
+        } else if (typeof updateData.price === 'number' && updateData.price < 0) {
+            // Ensure price is not negative
+            updateData.price = 0;
+        }
+
         const course = await db.course.update({
             where: { id: resolvedParams.courseId },
-            data: {
-                ...values,
-            }
+            data: updateData
         });
 
         console.log("[COURSE_ID_PATCH] Course updated successfully");

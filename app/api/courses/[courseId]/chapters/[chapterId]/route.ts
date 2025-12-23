@@ -62,6 +62,55 @@ export async function GET(
 
     const hasAccess = course && (course.price === 0 || purchase !== null);
 
+    // Check if user's study type matches chapter's study types
+    if (hasAccess && userId) {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { studyType: true }
+      });
+
+      // If chapter has study type restrictions and user has a study type
+      if (chapter.studyTypes && chapter.studyTypes.length > 0 && user?.studyType) {
+        // Normalize study type values (handle variations)
+        const userStudyType = user.studyType.trim();
+        const chapterStudyTypes = chapter.studyTypes.map((st: string) => st.trim());
+        
+        // Check if user's study type matches any of the chapter's study types
+        const hasMatchingStudyType = chapterStudyTypes.some((chapterStudyType: string) => 
+          chapterStudyType === userStudyType || 
+          (chapterStudyType.includes("أون لاين") && userStudyType.includes("أون لاين")) ||
+          (chapterStudyType.includes("أونلاين") && userStudyType.includes("أونلاين")) ||
+          (chapterStudyType.includes("سنتر") && userStudyType.includes("سنتر"))
+        );
+
+        if (!hasMatchingStudyType) {
+          // Format study type text for display
+          let studyTypeText = "";
+          const hasCentre = chapterStudyTypes.some((st: string) => st.includes("سنتر"));
+          const hasOnline = chapterStudyTypes.some((st: string) => st.includes("أون لاين") || st.includes("أونلاين"));
+          
+          if (hasCentre && hasOnline) {
+            studyTypeText = "السنتر أو الأونلاين";
+          } else if (hasCentre) {
+            studyTypeText = "السنتر";
+          } else if (hasOnline) {
+            studyTypeText = "الأونلاين";
+          } else {
+            studyTypeText = chapterStudyTypes.join(" أو ");
+          }
+          
+          return new NextResponse(
+            JSON.stringify({ 
+              error: `هذا الفصل متاح فقط لطلاب ${studyTypeText}`,
+              isStudyTypeMismatch: true,
+              requiredStudyType: studyTypeText
+            }), 
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     // Check if chapter is locked due to sequential access
     if (hasAccess && userId) {
       const [chapters, quizzes] = await db.$transaction([

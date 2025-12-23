@@ -96,6 +96,26 @@ export default function CoursePreviewPage({
                 const data = await response.json();
                 setHasAccess(data.hasAccess);
                 setHasPurchase(data.hasPurchase || false);
+                
+                // If user has access, redirect to first accessible content
+                if (data.hasAccess) {
+                    try {
+                        const firstContentResponse = await fetch(`/api/courses/${courseId}/first-content`);
+                        if (firstContentResponse.ok) {
+                            const firstContent = await firstContentResponse.json();
+                            if (firstContent.id && firstContent.type) {
+                                if (firstContent.type === 'quiz') {
+                                    router.push(`/courses/${courseId}/quizzes/${firstContent.id}`);
+                                } else {
+                                    router.push(`/courses/${courseId}/chapters/${firstContent.id}`);
+                                }
+                                return; // Exit early to prevent rendering preview page
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error fetching first content:", error);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error checking access:", error);
@@ -117,6 +137,7 @@ export default function CoursePreviewPage({
                 body: JSON.stringify({
                     code: promocode.trim(),
                     coursePrice: course.price || 0,
+                    courseId: course.id,
                 }),
             });
 
@@ -171,6 +192,23 @@ export default function CoursePreviewPage({
             if (response.ok) {
                 toast.success("تم الحصول على الكورس بنجاح!");
                 setHasAccess(true);
+                // Redirect to first accessible content
+                try {
+                    const firstContentResponse = await fetch(`/api/courses/${courseId}/first-content`);
+                    if (firstContentResponse.ok) {
+                        const firstContent = await firstContentResponse.json();
+                        if (firstContent.id && firstContent.type) {
+                            if (firstContent.type === 'quiz') {
+                                router.push(`/courses/${courseId}/quizzes/${firstContent.id}`);
+                            } else {
+                                router.push(`/courses/${courseId}/chapters/${firstContent.id}`);
+                            }
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching first content:", error);
+                }
                 router.refresh();
             } else {
                 const error = await response.text();

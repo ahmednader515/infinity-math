@@ -60,6 +60,94 @@ export async function GET(
             return new NextResponse("Quiz not found", { status: 404 });
         }
 
+        // Check if quiz is locked due to sequential access
+        const [chapters, quizzes] = await db.$transaction([
+            db.chapter.findMany({
+                where: {
+                    courseId: resolvedParams.courseId,
+                    isPublished: true
+                },
+                select: {
+                    id: true,
+                    position: true
+                },
+                orderBy: {
+                    position: "asc"
+                }
+            }),
+            db.quiz.findMany({
+                where: {
+                    courseId: resolvedParams.courseId,
+                    isPublished: true
+                },
+                select: {
+                    id: true,
+                    position: true,
+                    title: true
+                },
+                orderBy: {
+                    position: "asc"
+                }
+            })
+        ]);
+
+        const chaptersWithType = chapters.map(chapter => ({ ...chapter, type: 'chapter' as const }));
+        const quizzesWithType = quizzes.map(q => ({ ...q, type: 'quiz' as const }));
+        const sortedContent = [...chaptersWithType, ...quizzesWithType].sort((a, b) => a.position - b.position);
+
+        const currentIndex = sortedContent.findIndex(content => 
+            content.id === resolvedParams.quizId && content.type === 'quiz'
+        );
+
+        // Check if there's a quiz before this quiz that needs to be passed
+        if (currentIndex > 0) {
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                const prevContent = sortedContent[i];
+                if (prevContent.type === 'quiz') {
+                    // Check if student passed this quiz
+                    const quizResults = await db.quizResult.findMany({
+                        where: {
+                            studentId: userId,
+                            quizId: prevContent.id
+                        },
+                        select: {
+                            percentage: true
+                        },
+                        orderBy: {
+                            submittedAt: 'desc'
+                        }
+                    });
+
+                    if (quizResults.length === 0) {
+                        return new NextResponse(
+                            JSON.stringify({ 
+                                error: `يجب اجتياز الاختبار "${prevContent.title}" بنسبة 50% على الأقل أولاً`,
+                                isLocked: true 
+                            }), 
+                            { status: 403 }
+                        );
+                    }
+
+                    const bestResult = quizResults.reduce((best, current) => 
+                        current.percentage > best.percentage ? current : best
+                    );
+
+                    if (bestResult.percentage < 50) {
+                        return new NextResponse(
+                            JSON.stringify({ 
+                                error: `يجب اجتياز الاختبار "${prevContent.title}" بنسبة 50% على الأقل أولاً`,
+                                isLocked: true 
+                            }), 
+                            { status: 403 }
+                        );
+                    }
+
+                    // Found a passed quiz, stop checking
+                    break;
+                }
+            }
+        }
+
         // Check for per-student retry limit
         const studentSettings = await db.quizStudentSettings.findUnique({
             where: {

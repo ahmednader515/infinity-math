@@ -104,8 +104,8 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
   }, [pathname]);
 
   const onClick = (content: CourseContent) => {
-    // Don't allow navigation to locked chapters
-    if (content.type === 'chapter' && content.isLocked) {
+    // Don't allow navigation to locked content (chapters or quizzes)
+    if (content.isLocked) {
       return;
     }
     
@@ -161,7 +161,7 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
             ? content.userProgress && content.userProgress.length > 0 && content.userProgress[0]?.isCompleted
             : content.quizResults && content.quizResults.length > 0;
           
-          const isLocked = content.type === 'chapter' && content.isLocked;
+          const isLocked = content.isLocked;
           
           return (
             <div
@@ -181,7 +181,7 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
                   onClick(content);
                 }
               }}
-              title={isLocked && content.type === 'chapter' ? content.lockReason || undefined : undefined}
+              title={isLocked ? content.lockReason || undefined : undefined}
             >
               {isLocked ? (
                 <Lock className="h-4 w-4 text-slate-400" />

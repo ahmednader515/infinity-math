@@ -98,6 +98,36 @@ export default function QuizPage({
                 const timerInSeconds = (data.timer || 30) * 60;
                 setTimeLeft(timerInSeconds);
             } else {
+                if (response.status === 403) {
+                    // Quiz is locked, try to parse error message
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.isLocked) {
+                            toast.error(errorData.error || "هذا الاختبار مقفل");
+                            // Redirect to first accessible content
+                            try {
+                                const firstContentResponse = await fetch(`/api/courses/${courseId}/first-content`);
+                                if (firstContentResponse.ok) {
+                                    const firstContent = await firstContentResponse.json();
+                                    if (firstContent.id && firstContent.type) {
+                                        if (firstContent.type === 'quiz') {
+                                            router.push(`/courses/${courseId}/quizzes/${firstContent.id}`);
+                                        } else {
+                                            router.push(`/courses/${courseId}/chapters/${firstContent.id}`);
+                                        }
+                                        return;
+                                    }
+                                }
+                            } catch {
+                                router.push(`/courses/${courseId}/preview`);
+                            }
+                            return;
+                        }
+                    } catch {
+                        // If JSON parsing fails, continue with text check
+                    }
+                }
+                
                 const errorText = await response.text();
                 if (
                     errorText.includes("Maximum attempts reached") ||

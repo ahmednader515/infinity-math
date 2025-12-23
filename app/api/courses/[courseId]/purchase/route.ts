@@ -74,42 +74,64 @@ export async function POST(
         },
       });
 
-      if (promocode && promocode.isActive) {
-        const now = new Date();
-        const isValidDate = 
-          (!promocode.validFrom || new Date(promocode.validFrom) <= now) &&
-          (!promocode.validUntil || new Date(promocode.validUntil) >= now);
-        
-        const isWithinUsageLimit = !promocode.usageLimit || promocode.usedCount < promocode.usageLimit;
-        const meetsMinimumPurchase = !promocode.minPurchase || coursePrice >= promocode.minPurchase;
-        
-        // Check if promocode applies to this course
-        // If promocode has courses associated, it only applies to those courses
-        // If no courses are associated, it applies to all courses
-        const appliesToCourse = promocode.courses.length === 0 || 
-          promocode.courses.some(pc => pc.courseId === resolvedParams.courseId);
+      if (!promocode) {
+        return new NextResponse("رمز الكوبون غير صحيح", { status: 400 });
+      }
 
-        if (isValidDate && isWithinUsageLimit && meetsMinimumPurchase && appliesToCourse) {
-          // Calculate discount
-          if (promocode.discountType === "PERCENTAGE") {
-            discountAmount = (coursePrice * promocode.discountValue) / 100;
-            if (promocode.maxDiscount && discountAmount > promocode.maxDiscount) {
-              discountAmount = promocode.maxDiscount;
-            }
-          } else {
-            discountAmount = promocode.discountValue;
-          }
-          
-          // Can't discount more than the course price
-          if (discountAmount > coursePrice) {
-            discountAmount = coursePrice;
-          }
+      if (!promocode.isActive) {
+        return new NextResponse("هذا الكوبون غير نشط", { status: 400 });
+      }
 
-          coursePrice = Math.max(0, coursePrice - discountAmount);
-          promocodeId = promocode.id;
-          appliedPromocode = promocode.code;
+      // Check validity dates
+      const now = new Date();
+      if (promocode.validFrom && new Date(promocode.validFrom) > now) {
+        return new NextResponse("هذا الكوبون لم يبدأ بعد", { status: 400 });
+      }
+      if (promocode.validUntil && new Date(promocode.validUntil) < now) {
+        return new NextResponse("هذا الكوبون منتهي الصلاحية", { status: 400 });
+      }
+
+      // Check usage limit
+      if (promocode.usageLimit && promocode.usedCount >= promocode.usageLimit) {
+        return new NextResponse("تم استنفاذ عدد مرات استخدام هذا الكوبون", { status: 400 });
+      }
+
+      // Check if promocode applies to this course
+      // If promocode has courses associated, it only applies to those courses
+      // If no courses are associated, it applies to all courses
+      if (promocode.courses.length > 0) {
+        const appliesToCourse = promocode.courses.some(pc => pc.courseId === resolvedParams.courseId);
+        if (!appliesToCourse) {
+          return new NextResponse("هذا الكوبون لا ينطبق على هذا الكورس", { status: 400 });
         }
       }
+
+      // Check minimum purchase
+      if (promocode.minPurchase && coursePrice < promocode.minPurchase) {
+        return new NextResponse(
+          `يجب أن يكون سعر الشراء ${promocode.minPurchase} جنيه على الأقل`,
+          { status: 400 }
+        );
+      }
+
+      // Calculate discount
+      if (promocode.discountType === "PERCENTAGE") {
+        discountAmount = (coursePrice * promocode.discountValue) / 100;
+        if (promocode.maxDiscount && discountAmount > promocode.maxDiscount) {
+          discountAmount = promocode.maxDiscount;
+        }
+      } else {
+        discountAmount = promocode.discountValue;
+      }
+      
+      // Can't discount more than the course price
+      if (discountAmount > coursePrice) {
+        discountAmount = coursePrice;
+      }
+
+      coursePrice = Math.max(0, coursePrice - discountAmount);
+      promocodeId = promocode.id;
+      appliedPromocode = promocode.code;
     }
 
     // Check if user has sufficient balance
