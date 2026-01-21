@@ -404,10 +404,6 @@ export default function HomePage() {
                             )}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span>{course.enrollmentCount ?? 0} طالب مسجل</span>
-                        </div>
                       </div>
                       <Button 
                         className="w-full bg-[#0083d3] hover:bg-[#0083d3]/90 text-white" 
