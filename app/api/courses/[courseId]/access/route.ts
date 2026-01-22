@@ -39,14 +39,8 @@ export async function GET(
       purchase.status === "ACTIVE"
     );
 
-    // Free courses are always accessible, but we still want to know if they have a purchase record
-    if (course.price === 0) {
-      return NextResponse.json({ 
-        hasAccess: true,
-        hasPurchase: validPurchase
-      });
-    }
-
+    // For both free and paid courses, require a purchase record to access quizzes
+    // Free courses still need a purchase record to be created
     return NextResponse.json({ 
       hasAccess: validPurchase,
       hasPurchase: validPurchase

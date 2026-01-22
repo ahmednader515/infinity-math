@@ -134,8 +134,8 @@ export async function POST(
       appliedPromocode = promocode.code;
     }
 
-    // Check if user has sufficient balance
-    if (user.balance < coursePrice) {
+    // Check if user has sufficient balance (only for paid courses)
+    if (coursePrice > 0 && user.balance < coursePrice) {
       console.log(`[PURCHASE_ERROR] User ${userId} has insufficient balance. Required: ${coursePrice}, Available: ${user.balance}`);
       return new NextResponse("Insufficient balance", { status: 400 });
     }
@@ -160,31 +160,34 @@ export async function POST(
         },
       });
 
-      // Update user balance
-      const updatedUser = await tx.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          balance: {
-            decrement: coursePrice,
+      // Update user balance only for paid courses
+      let updatedUser = user;
+      if (coursePrice > 0) {
+        updatedUser = await tx.user.update({
+          where: {
+            id: userId,
           },
-        },
-      });
+          data: {
+            balance: {
+              decrement: coursePrice,
+            },
+          },
+        });
 
-      // Create balance transaction record
-      const transactionDescription = appliedPromocode
-        ? `تم شراء الكورس: ${course.title} (كوبون خصم: ${appliedPromocode})`
-        : `تم شراء الكورس: ${course.title}`;
+        // Create balance transaction record only for paid courses
+        const transactionDescription = appliedPromocode
+          ? `تم شراء الكورس: ${course.title} (كوبون خصم: ${appliedPromocode})`
+          : `تم شراء الكورس: ${course.title}`;
 
-      await tx.balanceTransaction.create({
-        data: {
-          userId,
-          amount: -coursePrice,
-          type: "PURCHASE",
-          description: transactionDescription,
-        },
-      });
+        await tx.balanceTransaction.create({
+          data: {
+            userId,
+            amount: -coursePrice,
+            type: "PURCHASE",
+            description: transactionDescription,
+          },
+        });
+      }
 
       // Increment promocode usage count if applied
       if (promocodeId) {

@@ -97,8 +97,9 @@ export default function CoursePreviewPage({
                 setHasAccess(data.hasAccess);
                 setHasPurchase(data.hasPurchase || false);
                 
-                // If user has access, redirect to first accessible content
-                if (data.hasAccess) {
+                // Only redirect if user has access AND a purchase record
+                // This ensures free courses require a purchase record before accessing quizzes
+                if (data.hasAccess && data.hasPurchase) {
                     try {
                         const firstContentResponse = await fetch(`/api/courses/${courseId}/first-content`);
                         if (firstContentResponse.ok) {
