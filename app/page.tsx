@@ -8,7 +8,6 @@ import Image from "next/image";
 import { Navbar } from "@/components/navbar";
 import { ScrollProgress } from "@/components/scroll-progress";
 import { useEffect, useState } from "react";
-import { RecaptchaGate } from "@/components/recaptcha-gate";
 
 const WhatsAppButton = () => {
   const phoneNumber = "201040626158"; // Egypt country code +20, removing leading 0
@@ -126,8 +125,7 @@ export default function HomePage() {
   };
 
   return (
-    <RecaptchaGate>
-      <div className="h-full w-full bg-background">
+    <div className="h-full w-full bg-background">
         <Navbar />
         <ScrollProgress />
         <WhatsAppButton />
@@ -585,6 +583,5 @@ export default function HomePage() {
         </div>
       </section>
       </div>
-    </RecaptchaGate>
   );
 } 

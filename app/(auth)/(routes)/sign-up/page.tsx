@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RecaptchaGate } from "@/components/recaptcha-gate";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -157,8 +156,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <RecaptchaGate>
-      <div className="flex min-h-screen bg-background overflow-y-auto">
+    <div className="flex min-h-screen bg-background overflow-y-auto">
       <div className="absolute top-4 left-4 z-10">
         <Button variant="ghost" size="lg" asChild>
           <Link href="/">
@@ -454,6 +452,5 @@ export default function SignUpPage() {
         </div>
       </div>
       </div>
-    </RecaptchaGate>
   );
 } 

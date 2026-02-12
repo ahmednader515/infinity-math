@@ -12,7 +12,7 @@ import { Plus, Trash2, GripVertical, X, Mic, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { UploadDropzone } from "@/lib/uploadthing";
+import { FileUpload } from "@/components/file-upload";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -1029,21 +1029,13 @@ const EditQuizPage = () => {
                                             </div>
                                         ) : (
                                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                                                <UploadDropzone
+                                                <FileUpload
                                                     endpoint="courseAttachment"
-                                                    onClientUploadComplete={(res) => {
-                                                        if (res && res[0]) {
-                                                            updateQuestion(index, "imageUrl", res[0].url);
+                                                    onChange={(res) => {
+                                                        if (res?.url) {
+                                                            updateQuestion(index, "imageUrl", res.url);
                                                             toast.success("تم رفع الصورة بنجاح");
                                                         }
-                                                        setUploadingImages(prev => ({ ...prev, [index]: false }));
-                                                    }}
-                                                    onUploadError={(error: Error) => {
-                                                        toast.error(`حدث خطأ أثناء رفع الصورة: ${error.message}`);
-                                                        setUploadingImages(prev => ({ ...prev, [index]: false }));
-                                                    }}
-                                                    onUploadBegin={() => {
-                                                        setUploadingImages(prev => ({ ...prev, [index]: true }));
                                                     }}
                                                 />
                                             </div>
