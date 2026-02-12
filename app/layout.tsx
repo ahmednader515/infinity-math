@@ -23,7 +23,7 @@ const playpenSansArabic = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "infinity math",
+  title: "مصطفي صلاح",
   description: "منصة تعليمية متكاملة",
 };
 
